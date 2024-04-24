@@ -1,11 +1,23 @@
 Package: spagg
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Aggregation approaches for combining spatial summary statistics (e.g. Ripley's K)
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Sarah Samorodnitsky
+Maintainer: Sarah Samorodnitsky <ssamorod@fredhutch.org>
+Description: Implements six aggregation approaches to combining spatial 
+  summary statistics estimated on multiple images or samples collected from
+  the same location or person. 
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+RoxygenNote: 7.3.0
+Imports: 
+    dplyr,
+    magrittr,
+    spatstat.explore,
+    spatstat.geom,
+    stats,
+    survival,
+    tidyselect
+Depends: 
+    R (>= 2.10)
