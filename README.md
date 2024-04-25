@@ -27,4 +27,4 @@ devtools::install_github("sarahsamorodnitsky/spagg")
 ## Vignettes
 
 For example usage of `spagg` in single-cell spatial proteomics imaging
-analysis, please see the associatd vignettes.
+analysis, please see the associated vignettes.
