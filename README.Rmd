@@ -1,8 +1,5 @@
 ---
 output: github_document
-header-includes:
-   - \usepackage{amsmath}
-   - \usepackage{amssymb}
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->

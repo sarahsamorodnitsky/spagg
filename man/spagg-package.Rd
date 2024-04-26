@@ -6,6 +6,6 @@
 \alias{spagg-package}
 \title{spagg: Aggregation approaches for combining spatial summary statistics (e.g. Ripley's K)}
 \description{
-Implements six aggregation approaches to combining spatial summary statistics estimated on multiple images or samples collected from the same location or person.
+Implements six aggregation approaches to combining spatial summary statistics estimated on multiple multiplexed spatial proteomics images or samples collected from the same location or person.
 }
 \keyword{internal}
