@@ -5,15 +5,17 @@ Version: 0.1.0
 Author: Sarah Samorodnitsky
 Maintainer: Sarah Samorodnitsky <ssamorod@fredhutch.org>
 Description: Implements six aggregation approaches to combining spatial 
-  summary statistics estimated on multiple images or samples collected from
-  the same location or person. 
+  summary statistics estimated on multiple multiplexed spatial proteomics images or 
+  samples collected from the same location or person. 
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.0
 Imports: 
+    ACAT,
     dplyr,
     magrittr,
+    spatstat,
     spatstat.explore,
     spatstat.geom,
     stats,
@@ -21,3 +23,7 @@ Imports:
     tidyselect
 Depends: 
     R (>= 2.10)
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
