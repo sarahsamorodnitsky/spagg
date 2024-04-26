@@ -16,7 +16,7 @@
 #' `seed` will match what was given. Otherwise, the function randomly selects a seed and this is returned.
 #' @references Liu et al. (2023) Ensemble methods for testing a global null. Journal of the Royal Statistical Society Series B: Statistical Methodology. 00. 1-26.
 #' @export
-#' @import spatstat, spatstat.explore, spatstat.geom, dplyr, survival, ACAT, tidyselect
+#' @import spatstat spatstat.explore spatstat.geom dplyr survival ACAT tidyselect
 #' @importFrom magrittr %>%
 #' @examples
 #' # Pick a radius to evaluate Ripley's K
@@ -146,7 +146,7 @@ ensemble.avg <- function(data, group, outcome, cens = NULL, model = "survival", 
 #' test (`pval`) and the seed used for reproducibility (`seed`). If the user provided a seed, then
 #' `seed` will match what was given. Otherwise, the function randomly selects a seed and this is returned.
 #' @export
-#' @import spatstat, spatstat.explore, spatstat.geom, dplyr, survival, ACAT, tidyselect
+#' @import spatstat spatstat.explore spatstat.geom dplyr survival ACAT tidyselect
 #' @importFrom magrittr %>%
 #' @examples
 #' # Pick a radius to evaluate Ripley's K
@@ -298,7 +298,7 @@ resampling.avg <- function(data, group, outcome, cens = NULL, model = "survival"
 #' test (`pval`) and the seed used for reproducibility (`seed`). If the user provided a seed, then
 #' `seed` will match what was given. Otherwise, the function randomly selects a seed and this is returned.
 #' @export
-#' @import spatstat, spatstat.explore, spatstat.geom, dplyr, survival, ACAT, tidyselect
+#' @import spatstat spatstat.explore spatstat.geom dplyr survival ACAT tidyselect
 #' @importFrom magrittr %>%
 #' @examples
 #' # Pick a radius to evaluate Ripley's K
