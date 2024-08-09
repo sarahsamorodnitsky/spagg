@@ -4,18 +4,15 @@
 # spagg
 
 <!-- badges: start -->
-r badge_devel("sarahsamorodnitsky/spagg", "blue")
+
+[![CRAN
+status](https://www.r-pkg.org/badges/version/spagg)](https://CRAN.R-project.org/package=spagg)
+[![R-CMD-check](https://github.com/sarahsamorodnitsky/spagg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/sarahsamorodnitsky/spagg/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-The goal of `spagg` is to provide tools for aggregating spatial summary
+The goal of spagg is to provide tools for aggregating spatial summary
 statistics generated from multiple regions-of-interest (ROIs) imaged
-using multiplexed spatial proteomics from the same tissue sample. 
-
-`spagg` contains several methods for aggregating spatial summaries, 
-including three types of weighted averages and three ensemble approaches. 
-The ensemble approaches randomly generate weights to construct a weighted
-average of the spatial summaries within each tissue sample. The p-values
-across these replications are aggregated using the Cauchy combination test. 
+using spatial proteomics from the same tissue sample.
 
 ## Installation
 

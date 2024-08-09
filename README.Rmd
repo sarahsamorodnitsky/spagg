@@ -16,6 +16,8 @@ knitr::opts_chunk$set(
 # spagg
 
 <!-- badges: start -->
+[![CRAN status](https://www.r-pkg.org/badges/version/spagg)](https://CRAN.R-project.org/package=spagg)
+[![R-CMD-check](https://github.com/sarahsamorodnitsky/spagg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/sarahsamorodnitsky/spagg/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 The goal of spagg is to provide tools for aggregating spatial summary statistics generated from
