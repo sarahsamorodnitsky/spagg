@@ -4,6 +4,7 @@
 # spagg
 
 <!-- badges: start -->
+`r badge_devel("sarahsamorodnitsky/spagg", "blue")`
 <!-- badges: end -->
 
 The goal of `spagg` is to provide tools for aggregating spatial summary
