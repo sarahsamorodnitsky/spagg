@@ -28,6 +28,7 @@ Suggests:
     rmarkdown,
     ggplot2,
     tidyr,
-    spatstat.utils
+    spatstat.utils,
+    spatstat.univar
 VignetteBuilder: knitr
 Remotes: yaowuliu/ACAT
