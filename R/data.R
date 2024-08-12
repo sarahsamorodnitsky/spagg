@@ -1,21 +1,19 @@
-#' Subset of non-small cell lung cancer dataset
+#' Simulated point pattern dataset for examples
 #'
-#' This is the cleaned version of a multiplexed immunohistochemistry (mIHC) dataset
-#' obtained from the Johnson et al. (2021) study of non-small cell lung cancer.
+#' This is a randomly-generated dataset for the purpose
+#' of illustrating the usage of the functions contained in
+#' this package. See spagg/data-raw/data.R for the code on
+#' how to simulate this dataset.
 #'
-#' @format ## `lung_df_tumor`
-#' A data frame with 871,171 rows and 9 columns:
+#' @format ## `data`
+#' A data frame with 38515 rows and 6 columns
 #' \describe{
-#'   \item{id}{Image ID corresponding to the ROI}
-#'   \item{PID}{Patient ID corresponding to the sample (multiple ROIs per sample)}
-#'   \item{cell_id}{Label for the cells in each ROI}
-#'   \item{x}{The x-coordinate for each cell}
-#'   \item{y}{The y-coordinate for each cell}
-#'   \item{mhcII_status, mhcII_high}{Binary indicators of major histocompatibility complex II (MHCII).
-#'   One column provides the labels as strings and the other as numeric values.}
-#'   \item{tissue_category}{Tissue where cells were detected. Cells were subset to just those in the tumor.}
-#'   \item{type}{Cell type}
+#'  \item{PID}{Sample ID that groups regions-of-interest (ROI) together}
+#'  \item{id}{ROI ID. This corresponds to an image within a larger sample}
+#'  \item{cell.id}{Enumerates each cell within each ROI. Each row corresponds to a cell.}
+#'  \item{x}{x-coordinate for each cell within each ROI }
+#'  \item{y}{y-coordinate for each cell within each ROI}
+#'  \item{type}{Cell-type label. Options are 'a' and 'b'. These are randomly generated.}
+#'  \item{out}{Sample-level binary outcome. Note that this should be the same within a PID.}
 #' }
-#' @source <http://juliawrobel.com/MI_tutorial/MI_Data.html>
-#' @source <https://www.sciencedirect.com/science/article/pii/S1556086421021754>
-"lung_df_tumor"
+"data"
