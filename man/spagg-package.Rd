@@ -8,4 +8,11 @@
 \description{
 Implements six aggregation approaches to combining spatial summary statistics estimated on multiple multiplexed spatial proteomics images or samples collected from the same location or person.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://sarahsamorodnitsky.github.io/spagg/}
+}
+
+}
 \keyword{internal}

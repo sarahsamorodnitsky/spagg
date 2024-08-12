@@ -32,3 +32,4 @@ Suggests:
     spatstat.univar
 VignetteBuilder: knitr
 Remotes: yaowuliu/ACAT
+URL: https://sarahsamorodnitsky.github.io/spagg/
