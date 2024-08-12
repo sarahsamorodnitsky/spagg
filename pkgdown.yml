@@ -3,7 +3,7 @@ pkgdown: 2.1.0
 pkgdown_sha: ~
 articles:
   spagg: spagg.html
-last_built: 2024-08-12T19:50Z
+last_built: 2024-08-12T19:55Z
 urls:
   reference: https://sarahsamorodnitsky.github.io/spagg/reference
   article: https://sarahsamorodnitsky.github.io/spagg/articles

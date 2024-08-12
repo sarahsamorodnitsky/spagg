@@ -117,8 +117,8 @@ test (`pval`) and the seed used for reproducibility (`seed`). If the user provid
 <span class="r-in"><span></span></span>
 <span class="r-in"><span> <span class="co"># Convert to a point process object</span></span></span>
 <span class="r-in"><span> <span class="va">w</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/convexhull.xy.html" class="external-link">convexhull.xy</a></span><span class="op">(</span><span class="va">image.i</span><span class="op">$</span><span class="va">x</span>, <span class="va">image.i</span><span class="op">$</span><span class="va">y</span><span class="op">)</span></span></span>
-<span class="r-in"><span> <span class="va">image.ppp</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/as.ppp.html" class="external-link">as.ppp</a></span><span class="op">(</span><span class="va">image.i</span>, W <span class="op">=</span> <span class="va">w</span>, marks <span class="op">=</span> <span class="va">image.i</span><span class="op">$</span><span class="va">type</span><span class="op">)</span></span></span>
-<span class="r-in"><span> <span class="va">image.ppp</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">image.ppp</span>, <span class="va">marks</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="st">"a"</span><span class="op">)</span></span></span>
+<span class="r-in"><span> <span class="va">image.i.subset</span> <span class="op">&lt;-</span> <span class="va">image.i</span> <span class="op"><a href="pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"a"</span><span class="op">)</span></span></span>
+<span class="r-in"><span> <span class="va">image.ppp</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/as.ppp.html" class="external-link">as.ppp</a></span><span class="op">(</span><span class="va">image.i.subset</span>, W <span class="op">=</span> <span class="va">w</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span> <span class="co"># Compute Kest</span></span></span>
 <span class="r-in"><span> <span class="va">Ki</span> <span class="op">&lt;-</span> <span class="fu">spatstat.explore</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.explore/man/Kest.html" class="external-link">Kest</a></span><span class="op">(</span><span class="va">image.ppp</span>, r <span class="op">=</span> <span class="fl">0</span><span class="op">:</span><span class="fl">30</span><span class="op">)</span></span></span>
@@ -126,7 +126,6 @@ test (`pval`) and the seed used for reproducibility (`seed`). If the user provid
 <span class="r-in"><span> <span class="co"># Save the result</span></span></span>
 <span class="r-in"><span> <span class="va">K.vec</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">Ki</span><span class="op">$</span><span class="va">iso</span><span class="op">[</span><span class="fl">31</span><span class="op">]</span></span></span>
 <span class="r-in"><span><span class="op">}</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in ppp(x = X[, 1], y = X[, 2], window = win, marks = marx, ...):</span> formal argument "marks" matched by multiple actual arguments</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">data.subset</span> <span class="op">&lt;-</span> <span class="va">data</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
 <span class="r-in"><span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="fu">tidyselect</span><span class="fu">::</span><span class="fu"><a href="https://tidyselect.r-lib.org/reference/all_of.html" class="external-link">all_of</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"PID"</span>, <span class="st">"out"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="pipe.html">%&gt;%</a></span></span></span>
@@ -136,16 +135,15 @@ test (`pval`) and the seed used for reproducibility (`seed`). If the user provid
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Remove NaNs</span></span></span>
 <span class="r-in"><span><span class="va">data.subset</span> <span class="op">&lt;-</span> <span class="va">data.subset</span> <span class="op"><a href="pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">spatial</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in dplyr::filter(., !is.na(spatial)):</span> <span style="color: #00BBBB;">ℹ</span> In argument: `!is.na(spatial)`.</span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">Caused by error:</span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> object 'spatial' not found</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Test</span></span></span>
 <span class="r-in"><span><span class="fu">ensemble.avg</span><span class="op">(</span>data <span class="op">=</span> <span class="va">data.subset</span>, group <span class="op">=</span> <span class="st">"PID"</span>, outcome <span class="op">=</span> <span class="st">"out"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error in dplyr::mutate(., weight.avg = sum(spatial * weights)/sum(weights)):</span> <span style="color: #00BBBB;">ℹ</span> In argument: `weight.avg = sum(spatial * weights)/sum(weights)`.</span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #00BBBB;">ℹ</span> In group 1: `get(group) = 1`.</span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="font-weight: bold;">Caused by error:</span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span style="color: #BBBB00;">!</span> object 'spatial' not found</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $pval</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0.08256314</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $seed</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1203513063</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
