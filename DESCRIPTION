@@ -27,5 +27,7 @@ Suggests:
     knitr,
     rmarkdown,
     ggplot2,
-    tidyr
+    tidyr,
+    spatstat.utils
 VignetteBuilder: knitr
+Remotes: yaowuliu/ACAT
