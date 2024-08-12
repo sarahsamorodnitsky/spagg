@@ -19,7 +19,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-In this vignette, we will demonstrate how to use the `spagg` package to aggregate replicated spatial summary statistics estimated across multiple regions-of-interest (ROIs) imaged from the same biospecimen, such as a tumor sample. 
+In this vignette, we will demonstrate how to use the `spagg` package to aggregate replicated spatial summary statistics estimated across multiple regions-of-interest (ROIs) imaged from the same biospecimen, such as a tumor sample. We may possess data for these specimens from multiplexed immunofluorescence imaging, which yields spatial information on the cells residing in the tissue.
 
 ```{r setup, message = FALSE}
 # Loading in packages
@@ -27,6 +27,7 @@ library(spagg)
 library(dplyr)
 library(magrittr)
 library(spatstat)
+library(ggplot2)
 ```
 
 Let's consider using `spagg` to analyze a multiplexed immunohistochemistry (mIHC) dataset generated from a non-small cell lung cancer study by @johnson2021cancer. Let's examine the spatial distribution of CD4 T cells and examine its association with major histocompatibility complex II (MHCII) status, a tumor-level label. We will use Ripley's K to characterize the spatial distribution of CD4+ T cells. 
@@ -34,6 +35,7 @@ Let's consider using `spagg` to analyze a multiplexed immunohistochemistry (mIHC
 Since this study cpatured multiple ROIs per tumor sample we need a way of handling multiple estimates of Ripley's K for each sample. `spagg` provides several ways of doing so. 
 
 First, let's load in the data we will use. This dataset was originally downloaded from [here] (http://juliawrobel.com/MI_tutorial/MI_Data.html) and cleaned for the purposes of this illustration. 
+
 ```{r data}
 data(lung_df_tumor)
 ```
@@ -58,7 +60,7 @@ We will first consider different approaches to averaging Ripely's K across ROIs 
 
 $\bar K_i^{Diggle}$ (@diggle1991analysis), $\bar K_i^{Baddeley}$ (@baddeley1993analysis), and $\bar K_i^{Landau}$ (@landau2004nonparametric) were each proposed as approaches to aggregating replicated Ripley's K statistics.  
 
-Let's estimate Ripley's K for $r=30$ on each ROI.
+Let's estimate Ripley's K for $r=30$ on each ROI. Note this may take several seconds (up to 30 seconds) to run. 
 
 ```{r Kest}
 # Set the radius
@@ -83,36 +85,51 @@ for (i in 1:length(ids)) {
    dplyr::filter(id == ids[i]) %>%
    dplyr::select(x, y, type)
 
- # Convert to a point process object
- w <- spatstat.geom::convexhull.xy(image.i$x, image.i$y)
- image.ppp <- spatstat.geom::as.ppp(image.i, W = w, marks = image.i$type)
- image.ppp <- subset(image.ppp, marks %in% "CD4+ T cell")
-
- # Compute Kest
- Ki <- spatstat.explore::Kest(image.ppp, r = 0:r)
-
- # Calculate the number of points
- npoints.i <- spatstat.geom::npoints(image.ppp)
- 
- # Calculate the area
- area.i <- spatstat.geom::area(image.ppp)
-
- # Save the results
- results[results$id == ids[i],]$spatial <- Ki$iso[r+1]
- results[results$id == ids[i],]$npoints <- npoints.i
- results[results$id == ids[i],]$area <- area.i
+   # Convert to a point process object
+   w <- spatstat.geom::convexhull.xy(image.i$x, image.i$y)
+   image.ppp <- spatstat.geom::as.ppp(image.i, W = w, marks = image.i$type)
+   image.ppp <- subset(image.ppp, marks %in% "CD4+ T cell")
+  
+   # Compute Kest
+   Ki <- spatstat.explore::Kest(image.ppp, r = 0:r)
+  
+   # Calculate the number of points
+   npoints.i <- spatstat.geom::npoints(image.ppp)
+   
+   # Calculate the area
+   area.i <- spatstat.geom::area(image.ppp)
+  
+   # Save the results
+   results[results$id == ids[i],]$spatial <- Ki$iso[r+1]
+   results[results$id == ids[i],]$npoints <- npoints.i
+   results[results$id == ids[i],]$area <- area.i
 }
 
 # View the first few rows
 head(results)
 ```
 
-Some of the Ripley's K estimates will be `NaN`s as a result of there being only $0$ or $1$ CD4 + T cell. We will remove these ROIs from our analysis. After that, we will compute the weighted averages given above. We will also compute a standard arithmetic mean as a comparison. 
+Some of the Ripley's K estimates will be `NaN`s as a result of there being only $0$ or $1$ CD4+ T cell in the corresponding image. We will remove these ROIs from our analysis. We can now visualize the distribution of the spatial summaries within each image as an illustration of the variation in spatial distribution of CD4+ T cells across ROIs. The figure below highlights the variation in Ripley's K statistics within a single sample. 
 
-```{r averages}
+```{r remove NAs and plot}
 # Remove NAs
 results <- results[!is.na(results$spatial),]
 
+# Visualize the distribution of spatial summaries within each sample
+results %>%
+  dplyr::mutate(PID = factor(PID)) %>%
+  ggplot(aes(x = PID, y = spatial, group = PID)) + 
+  geom_boxplot() +
+  theme_bw() +
+   theme(axis.text.x = element_blank(),  
+         axis.ticks.x = element_blank()) +
+  ggtitle("Ripley's K statistics for ROIs within a each sample") +
+  ylab("Kest")
+```
+
+After that, we will compute the weighted averages given above. We will also compute a standard arithmetic mean as a comparison. Below, we visualize the spread of the various spatial aggregation methods within each sample. For some samples, the averages yield similar values. For others, their values show large variation. 
+
+```{r averages}
 # Compute averages
 results_mean <- results %>%
     dplyr::group_by(PID) %>%
@@ -121,9 +138,26 @@ results_mean <- results %>%
                              ~landau.avg(K.vec = .x, area.vec = area, n.vec = npoints),
                              ~diggle.avg(K.vec = .x, n.vec = npoints),
                              ~baddeley.avg(K.vec = .x, n.vec = npoints)))
+
+# Plot the averages
+results_mean %>%
+  tidyr::pivot_longer(2:5, names_to = "mean", values_to = "value") %>%
+  dplyr::mutate(mean = recode(mean, 
+                              "mean" = "Arithmetic Mean",
+                              "landau.avg" = "Landau Mean",
+                              "diggle.avg" = "Diggle Mean",
+                              "baddeley.avg" = "Baddeley Mean")) %>%
+  ggplot(aes(x = PID, y = value, group = mean, color = mean)) +
+  geom_point() +
+  theme_bw() +
+  theme(axis.text.x = element_blank(),  
+        axis.ticks.x = element_blank()) +
+  ylab("Average Kest") +
+  ggtitle("Averaged Ripley's K within each sample") +
+  scale_color_discrete(name = "Aggregation Method")
 ```
 
-We now have a data.frame with a column corresponding to each average. Let's add in the MHCII-high status variable so we can do association testing. 
+We now have a data.frame with a column corresponding to each average. Let's add in the MHCII-high status variable so we can do association testing. We would like to test if the spatial arrangement of CD4+ T cells is associated with MHCII-high status. We will compare the significance of this association across the four spatial aggregation methods.  
 
 ```{r testing with averages}
 # First, check the ordering matches
