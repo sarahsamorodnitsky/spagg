@@ -28,3 +28,9 @@ devtools::install_github("sarahsamorodnitsky/spagg")
 
 For example usage of `spagg` in single-cell spatial proteomics imaging
 analysis, please see the associated vignettes.
+
+## Bugs and Improvements
+
+Please feel free to notify me about issues or bugs in the package using
+the `Issues` tab. Feel free to use this tab to also suggest improvements
+to the package.
