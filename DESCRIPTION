@@ -1,6 +1,6 @@
 Package: spagg
 Type: Package
-Title: Aggregation approaches for combining spatial summary statistics (e.g. Ripley's K)
+Title: Aggregation approaches for combining spatial summary statistics
 Version: 0.1.0
 Author: Sarah Samorodnitsky
 Maintainer: Sarah Samorodnitsky <ssamorod@fredhutch.org>
