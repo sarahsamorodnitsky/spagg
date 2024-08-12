@@ -59,8 +59,8 @@ for (i in 1:length(ids)) {
 
  # Convert to a point process object
  w <- spatstat.geom::convexhull.xy(image.i$x, image.i$y)
- image.ppp <- spatstat.geom::as.ppp(image.i, W = w, marks = image.i$type)
- image.ppp <- subset(image.ppp, marks \%in\% "a")
+ image.i.subset <- image.i \%>\% dplyr::filter(type == "a")
+ image.ppp <- spatstat.geom::as.ppp(image.i.subset, W = w)
 
  # Compute Kest
  Ki <- spatstat.explore::Kest(image.ppp, r = 0:30)
