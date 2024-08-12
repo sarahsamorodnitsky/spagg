@@ -49,21 +49,21 @@ of random weighting and weighting by the number of points
 r <- 30
 
 # Save the image IDs
-ids <- unique(lung_df_tumor$id)
+ids <- unique(data$id)
 
 # Compute Ripley's K for tumor cells at r
 K.vec <- c()
 npoints.vec <- c()
 for (i in 1:length(ids)) {
   # Save the ith image
-  image.i <- lung_df_tumor \%>\%
+  image.i <- data \%>\%
     dplyr::filter(id == ids[i]) \%>\%
     dplyr::select(x,y,type)
 
   # Convert to a point process object
   w <- spatstat.geom::convexhull.xy(image.i$x, image.i$y)
   image.ppp <- spatstat.geom::as.ppp(image.i, W = w, marks = image.i$type)
-  image.ppp <- subset(image.ppp, marks \%in\% "CD4+ T cell")
+  image.ppp <- subset(image.ppp, marks \%in\% "a")
 
   # Compute Kest
   Ki <- spatstat.explore::Kest(image.ppp, r = 0:30)
@@ -75,16 +75,16 @@ for (i in 1:length(ids)) {
   K.vec[i] <- Ki$iso[31]
 }
 
-data <- lung_df_tumor \%>\%
-  dplyr::select(tidyselect::all_of(c("id", "PID", "mhcII_high"))) \%>\%
+data.subset <- data \%>\%
+  dplyr::select(tidyselect::all_of(c("id", "PID", "out"))) \%>\%
   dplyr::distinct()
 
-data$spatial <- K.vec
-data$npoints <- npoints.vec
+data.subset$spatial <- K.vec
+data.subset$npoints <- npoints.vec
 
 # Remove NaNs
-data <- data \%>\% dplyr::filter(!is.na(spatial))
+data.subset <- data.subset \%>\% dplyr::filter(!is.na(spatial))
 
 # Test
-combo.weight.avg(data = data, group = "PID", outcome = "mhcII_high", model = "logistic")
+combo.weight.avg(data = data.subset, group = "PID", outcome = "out", model = "logistic")
 }
