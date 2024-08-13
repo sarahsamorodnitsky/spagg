@@ -147,13 +147,11 @@ represent the spatial distribution of CD4+ T cells evaluate at radius
 <p><code>spagg</code> contains implementations for the following three
 weighted averages:</p>
 <ol style="list-style-type: decimal">
-<li><p><span class="math display">$$\begin{equation*}
-  \bar K_i^{Diggle} = \frac{1}{\sum_{r=1}^{R_i} n_{ir} \sum_{r=1}^{R_i}
-n_{ir} \hat K_{ir}
-\end{equation*}$$</span></p></li>
-<li><p><span class="math display">$$\begin{equation*}
-  \bar K_i^{Baddeley} = \frac{1}{\sum_{r=1}^{R_i} n^2_{ir}
-\sum_{r=1}^{R_i} n^2_{ir} \hat K_{ir} \end{equation*}$$</span></p></li>
+<li><p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mover><mi>K</mi><mo accent="true">‾</mo></mover><mi>i</mi><mrow><mi>D</mi><mi>i</mi><mi>g</mi><mi>g</mi><mi>l</mi><mi>e</mi></mrow></msubsup><mo>=</mo><mfrac><mn>1</mn><mrow><munderover><mo>∑</mo><mrow><mi>r</mi><mo>=</mo><mn>1</mn></mrow><msub><mi>R</mi><mi>i</mi></msub></munderover><msub><mi>n</mi><mrow><mi>i</mi><mi>r</mi></mrow></msub></mrow></mfrac><munderover><mo>∑</mo><mrow><mi>r</mi><mo>=</mo><mn>1</mn></mrow><msub><mi>R</mi><mi>i</mi></msub></munderover><msub><mi>n</mi><mrow><mi>i</mi><mi>r</mi></mrow></msub><msub><mover><mi>K</mi><mo accent="true">̂</mo></mover><mrow><mi>i</mi><mi>r</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\begin{equation*}
+\bar K_i^{Diggle} = \frac{1}{\sum_{r=1}^{R_i} n_{ir}} \sum_{r=1}^{R_i} n_{ir} \hat K_{ir}
+\end{equation*}</annotation></semantics></math></p></li>
+<li><p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mover><mi>K</mi><mo accent="true">‾</mo></mover><mi>i</mi><mrow><mi>B</mi><mi>a</mi><mi>d</mi><mi>d</mi><mi>e</mi><mi>l</mi><mi>e</mi><mi>y</mi></mrow></msubsup><mo>=</mo><mfrac><mn>1</mn><mrow><munderover><mo>∑</mo><mrow><mi>r</mi><mo>=</mo><mn>1</mn></mrow><msub><mi>R</mi><mi>i</mi></msub></munderover><msubsup><mi>n</mi><mrow><mi>i</mi><mi>r</mi></mrow><mn>2</mn></msubsup></mrow></mfrac><munderover><mo>∑</mo><mrow><mi>r</mi><mo>=</mo><mn>1</mn></mrow><msub><mi>R</mi><mi>i</mi></msub></munderover><msubsup><mi>n</mi><mrow><mi>i</mi><mi>r</mi></mrow><mn>2</mn></msubsup><msub><mover><mi>K</mi><mo accent="true">̂</mo></mover><mrow><mi>i</mi><mi>r</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\begin{equation*}
+  \bar K_i^{Baddeley} = \frac{1}{\sum_{r=1}^{R_i} n^2_{ir}} \sum_{r=1}^{R_i} n^2_{ir} \hat K_{ir} \end{equation*}</annotation></semantics></math></p></li>
 <li><p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msubsup><mover><mi>K</mi><mo accent="true">‾</mo></mover><mi>i</mi><mrow><mi>L</mi><mi>a</mi><mi>n</mi><mi>d</mi><mi>a</mi><mi>u</mi></mrow></msubsup><mo>=</mo><mfrac><mrow><munderover><mo>∑</mo><mrow><mi>r</mi><mo>=</mo><mn>1</mn></mrow><msub><mi>R</mi><mi>i</mi></msub></munderover><msub><mi>A</mi><mrow><mi>i</mi><mi>r</mi></mrow></msub></mrow><mrow><munderover><mo>∑</mo><mrow><mi>r</mi><mo>=</mo><mn>1</mn></mrow><msub><mi>R</mi><mi>i</mi></msub></munderover><msub><mi>n</mi><mrow><mi>i</mi><mi>r</mi></mrow></msub></mrow></mfrac><munderover><mo>∑</mo><mrow><mi>r</mi><mo>=</mo><mn>1</mn></mrow><msub><mi>R</mi><mi>i</mi></msub></munderover><mfrac><msubsup><mi>n</mi><mrow><mi>i</mi><mi>r</mi></mrow><mn>2</mn></msubsup><msub><mi>A</mi><mrow><mi>i</mi><mi>r</mi></mrow></msub></mfrac><msub><mover><mi>K</mi><mo accent="true">̂</mo></mover><mrow><mi>i</mi><mi>r</mi></mrow></msub></mrow><annotation encoding="application/x-tex">\begin{equation*}
   \bar K_i^{Landau} = \frac{\sum_{r=1}^{R_i} A_{ir}}{\sum_{r=1}^{R_i} n_{ir}} \sum_{r=1}^{R_i} \frac{n^2_{ir}}{A_{ir}} \hat K_{ir} 
 \end{equation*}</annotation></semantics></math></p></li>
