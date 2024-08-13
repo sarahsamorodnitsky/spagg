@@ -23,7 +23,7 @@ simdata
 \description{
 This is a randomly-generated dataset for the purpose
 of illustrating the usage of the functions contained in
-this package. See spagg/data-raw/data.R for the code on
+this package. See spagg/data-raw/simdata.R for the code on
 how to simulate this dataset.
 }
 \keyword{datasets}
