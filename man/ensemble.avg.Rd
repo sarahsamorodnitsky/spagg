@@ -44,16 +44,16 @@ Ensemble aggregation of spatial summaries (e.g. Ripley's K) using random weighti
 }
 \examples{
 # Pick a radius to evaluate Ripley's K
-r <- 10
+r <- 30
 
 # Save the image IDs
-ids <- unique(data$id)
+ids <- unique(simdata$id)
 
 # Compute Ripley's K for tumor cells at r
 K.vec <- c()
 for (i in 1:length(ids)) {
  # Save the ith image
- image.i <- data \%>\%
+ image.i <- simdata \%>\%
    dplyr::filter(id == ids[i]) \%>\%
    dplyr::select(x,y,type)
 
@@ -69,7 +69,7 @@ for (i in 1:length(ids)) {
  K.vec[i] <- Ki$iso[31]
 }
 
-data.subset <- data \%>\%
+data.subset <- simdata \%>\%
  dplyr::select(tidyselect::all_of(c("id", "PID", "out"))) \%>\%
  dplyr::distinct()
 

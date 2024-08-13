@@ -10,7 +10,7 @@ set.seed(68490)
 n <- 20 # Number of samples to generate
 
 # Initialize data.frame to store samples
-data <- data.frame(
+simdata <- data.frame(
   PID = numeric(),
   id = character(),
   cell.id = numeric(),
@@ -55,21 +55,26 @@ for (i in 1:n) {
     # Save the image
     image.ij <- data.frame(PID = i,
                            id = paste0("PID.", i, ".image.", j),
-                           cell.id = 1:xy$n,
                            x = xy$x,
-                           y = xy$y,
-                           type = sample(c("a", "b"), xy$n, replace = TRUE))
+                           y = xy$y)
+
+    # Remove duplicates
+    image.ij <- image.ij %>% dplyr::distinct()
+
+    # Add cell IDs and labels
+    image.ij$cell.id <- 1:xy$n
+    image.ij$type<- sample(c("a", "b"), xy$n, replace = TRUE)
 
     # Save the outcome
     if (i <= 10) {
-      image.ij$out <- 1
+      image.ij$out <- rbinom(1, size = 1, p = 0.75)
     } else {
-      image.ij$out <- 0
+      image.ij$out <- rbinom(1, size = 1, p = 0.25)
     }
 
-    data <- rbind.data.frame(data, image.ij)
+    simdata <- rbind.data.frame(simdata, image.ij)
   }
 }
 
 # Save the resulting dataset
-usethis::use_data(data, overwrite = TRUE)
+usethis::use_data(simdata, overwrite = TRUE)

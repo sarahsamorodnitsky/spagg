@@ -20,16 +20,16 @@
 #' @importFrom magrittr %>%
 #' @examples
 #' # Pick a radius to evaluate Ripley's K
-#' r <- 10
+#' r <- 30
 #'
 #' # Save the image IDs
-#' ids <- unique(data$id)
+#' ids <- unique(simdata$id)
 #'
 #' # Compute Ripley's K for tumor cells at r
 #' K.vec <- c()
 #' for (i in 1:length(ids)) {
 #'  # Save the ith image
-#'  image.i <- data %>%
+#'  image.i <- simdata %>%
 #'    dplyr::filter(id == ids[i]) %>%
 #'    dplyr::select(x,y,type)
 #'
@@ -45,7 +45,7 @@
 #'  K.vec[i] <- Ki$iso[31]
 #' }
 #'
-#' data.subset <- data %>%
+#' data.subset <- simdata %>%
 #'  dplyr::select(tidyselect::all_of(c("id", "PID", "out"))) %>%
 #'  dplyr::distinct()
 #'
@@ -153,13 +153,13 @@ ensemble.avg <- function(data, group, outcome, cens = NULL, model = "survival", 
 #' r <- 30
 #'
 #' # Save the image IDs
-#' ids <- unique(data$id)
+#' ids <- unique(simdata$id)
 #'
 #' # Compute Ripley's K for tumor cells at r
 #' K.vec <- c()
 #'for (i in 1:length(ids)) {
 #'  # Save the ith image
-#'  image.i <- data %>%
+#'  image.i <- simdata %>%
 #'    dplyr::filter(id == ids[i]) %>%
 #'    dplyr::select(x,y,type)
 #'
@@ -175,7 +175,7 @@ ensemble.avg <- function(data, group, outcome, cens = NULL, model = "survival", 
 #'  K.vec[i] <- Ki$iso[31]
 #' }
 #'
-#' data.subset <- data %>%
+#' data.subset <- simdata %>%
 #'  dplyr::select(tidyselect::all_of(c("id", "PID", "out"))) %>%
 #'  dplyr::distinct()
 #'
@@ -305,14 +305,14 @@ resampling.avg <- function(data, group, outcome, cens = NULL, model = "survival"
 #' r <- 30
 #'
 #' # Save the image IDs
-#' ids <- unique(data$id)
+#' ids <- unique(simdata$id)
 #'
 #' # Compute Ripley's K for tumor cells at r
 #' K.vec <- c()
 #' npoints.vec <- c()
 #' for (i in 1:length(ids)) {
 #'   # Save the ith image
-#'   image.i <- data %>%
+#'   image.i <- simdata %>%
 #'     dplyr::filter(id == ids[i]) %>%
 #'     dplyr::select(x,y,type)
 #'
@@ -331,7 +331,7 @@ resampling.avg <- function(data, group, outcome, cens = NULL, model = "survival"
 #'   K.vec[i] <- Ki$iso[31]
 #' }
 #'
-#' data.subset <- data %>%
+#' data.subset <- simdata %>%
 #'   dplyr::select(tidyselect::all_of(c("id", "PID", "out"))) %>%
 #'   dplyr::distinct()
 #'

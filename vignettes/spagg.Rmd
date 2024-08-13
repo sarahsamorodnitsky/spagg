@@ -79,12 +79,12 @@ We will first consider different approaches to averaging Ripely's K across ROIs 
 
 (1) 
 \begin{equation*}
-  \bar K_i^{Diggle} = \frac{1}{\sum_{r=1}^{R_i} n_{ir} \sum_{r=1}^{R_i} n_{ir} \hat K_{ir}
+\bar K_i^{Diggle} = \frac{1}{\sum_{r=1}^{R_i} n_{ir}} \sum_{r=1}^{R_i} n_{ir} \hat K_{ir}
 \end{equation*}
 
 (2)
 \begin{equation*}
-  \bar K_i^{Baddeley} = \frac{1}{\sum_{r=1}^{R_i} n^2_{ir} \sum_{r=1}^{R_i} n^2_{ir} \hat K_{ir} \end{equation*}
+  \bar K_i^{Baddeley} = \frac{1}{\sum_{r=1}^{R_i} n^2_{ir}} \sum_{r=1}^{R_i} n^2_{ir} \hat K_{ir} \end{equation*}
 
 (3)
 \begin{equation*}
