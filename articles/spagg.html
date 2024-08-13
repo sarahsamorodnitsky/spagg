@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>spagg • spagg</title>
+<title>Introducing spagg • spagg</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="spagg">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Introducing spagg">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -49,7 +49,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>spagg</h1>
+      <h1>Introducing spagg</h1>
             
       
 
@@ -86,8 +86,8 @@ way of handling multiple estimates of Ripley’s K for each sample.
 downloaded from <a href="http://juliawrobel.com/MI_tutorial/MI_Data.html" class="external-link uri">http://juliawrobel.com/MI_tutorial/MI_Data.html</a> but is
 also available from the <code>VectraPolarisData</code> R package. For
 the purposes of this illustration, we do some basic tidying of the data
-prior to analysis. The steps to this tidying follow the steps shown in
-the link given above. These steps are shown below.</p>
+prior to analysis. The steps to this are similar to those given in the
+link given above. These steps are shown below.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Load in the data</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/connections.html" class="external-link">url</a></span><span class="op">(</span><span class="st">"http://juliawrobel.com/MI_tutorial/Data/lung.RDA"</span><span class="op">)</span><span class="op">)</span></span>
@@ -121,7 +121,26 @@ the link given above. These steps are shown below.</p>
 <span><span class="va">lung_df_tumor</span> <span class="op">&lt;-</span> <span class="va">lung_df_tumor</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Remove NA types</span></span>
-<span><span class="va">lung_df_tumor</span> <span class="op">&lt;-</span> <span class="va">lung_df_tumor</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">type</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">lung_df_tumor</span> <span class="op">&lt;-</span> <span class="va">lung_df_tumor</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">type</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Show the first few rows of the data</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">lung_df_tumor</span><span class="op">)</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 39</span></span></span>
+<span><span class="co">#&gt;   id              PID   cell_id     x     y gender mhcII_status age_at_diagnosis</span></span>
+<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> #01 0-889-121 … #01 …       5  453    2.5 F      low                        85</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> #01 0-889-121 … #01 …       6  463    2.5 F      low                        85</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> #01 0-889-121 … #01 …      11  464    8.5 F      low                        85</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> #01 0-889-121 … #01 …      12  538   10   F      low                        85</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> #01 0-889-121 … #01 …      21  522   20.5 F      low                        85</span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> #01 0-889-121 … #01 …      22  566.  25   F      low                        85</span></span>
+<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 31 more variables: stage_at_diagnosis &lt;chr&gt;, stage_numeric &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   pack_years &lt;dbl&gt;, survival_days &lt;dbl&gt;, survival_status &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   cause_of_death &lt;chr&gt;, adjuvant_therapy &lt;chr&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   time_to_recurrence_days &lt;dbl&gt;, recurrence_or_lung_ca_death &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   tissue_category &lt;chr&gt;, cd19 &lt;dbl&gt;, cd3 &lt;dbl&gt;, cd14 &lt;dbl&gt;, cd8 &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   hladr &lt;dbl&gt;, ck &lt;dbl&gt;, dapi &lt;dbl&gt;, entire_cell_axis_ratio &lt;dbl&gt;,</span></span></span>
+<span><span class="co">#&gt; <span style="color: #949494;">#   entire_cell_major_axis &lt;dbl&gt;, entire_cell_minor_axis &lt;dbl&gt;, …</span></span></span></code></pre></div>
 <p>We will first consider different approaches to averaging Ripely’s K
 across ROIs within a tumor sample. Let’s start by defining some
 notation. Suppose for sample
