@@ -1,5 +1,5 @@
 ---
-title: "spagg"
+title: "Introducing spagg"
 output: rmarkdown::html_vignette
 bibliography: bibliography.bib  
 vignette: >
@@ -35,7 +35,7 @@ Let's consider using `spagg` to analyze a multiplexed immunohistochemistry (mIHC
 
 Since this study cpatured multiple ROIs per tumor sample we need a way of handling multiple estimates of Ripley's K for each sample. `spagg` provides several ways of doing so. 
 
-First, let's load in the data we will use. This dataset will be downloaded from http://juliawrobel.com/MI_tutorial/MI_Data.html but is also available from the `VectraPolarisData` R package. For the purposes of this illustration, we do some basic tidying of the data prior to analysis. The steps to this tidying follow the steps shown in the link given above. These steps are shown below. 
+First, let's load in the data we will use. This dataset will be downloaded from http://juliawrobel.com/MI_tutorial/MI_Data.html but is also available from the `VectraPolarisData` R package. For the purposes of this illustration, we do some basic tidying of the data prior to analysis. The steps to this are similar to those given in the link given above. These steps are shown below. 
 
 ```{r data}
 # Load in the data
@@ -71,6 +71,9 @@ lung_df_tumor <- lung_df_tumor %>% dplyr::ungroup()
 
 # Remove NA types
 lung_df_tumor <- lung_df_tumor %>% filter(!is.na(type))
+
+# Show the first few rows of the data
+head(lung_df_tumor)
 ```
 
 We will first consider different approaches to averaging Ripely's K across ROIs within a tumor sample. Let's start by defining some notation. Suppose for sample $i$ we have $R_i$ ROIs. Let $n_{ir}$ be the number of cells in sample $i$ ROI $r$. Let $A_{ir}$ represent the area of sample $i$ ROI $r$. Let $\hat K_{ir}$ represent the spatial distribution of CD4+ T cells evaluate at radius $30$. 
@@ -220,7 +223,6 @@ summary(landau.glm)$coef[2,4]
 We did not find any significant associations between the spatial distribution of CD4 T cells as estimated by Ripley's K and MHCII-high status at a radius of $r=30$. 
 
 We now illustrate using ensemble testing to test the same hypothesis. `spagg` contains implementations for three different approaches:
-
 
 - Standard ensemble testing: in this approach, `spagg` randomly generates weights from a standard normal distribution which are used to construct a weighted mean of the Ripley's K estimates obtained from each ROI. This process is repeated many times. For each random set of weights, the association between the weighted mean spatial summary and sample-level outcomes is tested. The resulting p-values are combined using the Cauchy combination test. This approach is contained in the `ensemble.avg` function. 
 
