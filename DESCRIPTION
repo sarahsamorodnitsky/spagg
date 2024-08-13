@@ -32,5 +32,5 @@ Suggests:
     spatstat.univar,
     SPOT
 VignetteBuilder: knitr
-Remotes: yaowuliu/ACAT, samorodnitsky/SPOT
+Remotes: yaowuliu/ACAT, sarahsamorodnitsky/SPOT
 URL: https://sarahsamorodnitsky.github.io/spagg/
