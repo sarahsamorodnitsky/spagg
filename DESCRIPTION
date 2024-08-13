@@ -29,8 +29,7 @@ Suggests:
     ggplot2,
     tidyr,
     spatstat.utils,
-    spatstat.univar,
-    SPOT
+    spatstat.univar
 VignetteBuilder: knitr
 Remotes: yaowuliu/ACAT
 URL: https://sarahsamorodnitsky.github.io/spagg/
