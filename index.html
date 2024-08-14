@@ -56,7 +56,14 @@
 </h1></div>
 <!-- badges: start -->
 
-<p>The goal of spagg is to provide tools for aggregating spatial summary statistics generated from multiple regions-of-interest (ROIs) imaged using spatial proteomics from the same tissue sample.</p>
+<p>The goal of <code>spagg</code> is to provide tools for aggregating spatial summary statistics generated from multiple regions-of-interest (ROIs) collected from the same tissue sample using multiplexed spatial proteomics technologies.</p>
+<div class="section level2">
+<h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
+</h2>
+<p>The analysis of spatial proteomics often involves calculating a spatial summary statistic, such as Ripley’s K, to quantify the level of clustering, repulsion, or complete spatial randomness exhibited by the cells. Given multiple ROIs for each sample, aggregating the spatial summary statistics for each ROI into a single value can facilitate downstream association testing with clinical outcomes.</p>
+<p><code>spagg</code> provides several methods for aggregating spatial summary statistics. These include three weighted means (<code>diggle.avg</code>, <code>baddeley.avg</code>, and <code>landau.avg</code>) and three ensemble approaches (<code>ensemble.avg</code>, <code>resampling.avg</code>, <code>combo.weight.avg</code>). The weighted means aggregate the summary statistics using a weighted mean based on the number of cells in each ROI and/or the area of each ROI. The ensemble approaches use random weights to construct an aggregation and combine the resulting p-values across many randomly-generated weights for an ensemble test.</p>
+<p>The weighted means can be easily incorporated into other analytical approaches for spatial proteomics, such as the SPatial Omnibus Test (SPOT). Incorporation of the ensemble approaches in SPOT is in development.</p>
+</div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
@@ -68,12 +75,12 @@
 <div class="section level2">
 <h2 id="vignettes">Vignettes<a class="anchor" aria-label="anchor" href="#vignettes"></a>
 </h2>
-<p>For example usage of <code>spagg</code> in single-cell spatial proteomics imaging analysis, please see the associated vignettes.</p>
+<p>For example usage of <code>spagg</code> in single-cell spatial proteomics imaging analysis, please see the associated vignettes. The vignettes illustrate how to apply the weighted means and ensemble approaches in analyses of real multiplexed spatial proteomics datasets.</p>
 </div>
 <div class="section level2">
 <h2 id="bugs-and-improvements">Bugs and Improvements<a class="anchor" aria-label="anchor" href="#bugs-and-improvements"></a>
 </h2>
-<p>Please feel free to notify me about issues or bugs in the package using the <code>Issues</code> tab. Feel free to use this tab to also suggest improvements to the package.</p>
+<p>Please feel free to use the <code>Issues</code> tab to note bugs or to suggest improvements.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="license">
