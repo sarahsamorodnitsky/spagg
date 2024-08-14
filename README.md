@@ -38,9 +38,18 @@ You can install the development version of spagg from
 [GitHub](https://github.com/) with:
 
 ``` r
-# install.packages("devtools")
+# First, install devtools
+if (!require("devtools", quietly = TRUE)) {
+  install.packages("devtools")
+}
+
+# Install from Github
 devtools::install_github("sarahsamorodnitsky/spagg")
 ```
+
+`spagg` relies on several required dependencies: `ACAT`, `dplyr`, `magrittr`, the `spatstat` family of packages, `stats`, `survival`, and `tidyselect`. The `ACAT` package is currently in development on Github. To properly install `spagg`, the latest version of `devtools` is required to ensure it can install `ACAT` from Github. 
+
+In addition, `spagg` relies on several suggested packages to run the vignettes: `knitr`, `rmarkdown`, `ggplot2`, `tidyr`, `spatstat.utils`, `spatstat.univar`, and `SPOT`. 
 
 ## Vignettes
 
