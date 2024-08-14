@@ -10,11 +10,11 @@ status](https://www.r-pkg.org/badges/version/spagg)](https://CRAN.R-project.org/
 [![R-CMD-check](https://github.com/sarahsamorodnitsky/spagg/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/sarahsamorodnitsky/spagg/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
+## Overview
+
 The goal of `spagg` is to provide tools for aggregating spatial summary
 statistics generated from multiple regions-of-interest (ROIs) collected 
 from the same tissue sample using multiplexed spatial proteomics technologies.
-
-## Overview
 
 The analysis of spatial proteomics often involves calculating a spatial summary
 statistic, such as Ripley's K, to quantify the level of clustering, repulsion, or 
