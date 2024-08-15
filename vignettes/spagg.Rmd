@@ -1,5 +1,5 @@
 ---
-title: "Introducing spagg"
+title: "spagg"
 output: rmarkdown::html_vignette
 bibliography: bibliography.bib  
 vignette: >
@@ -15,7 +15,10 @@ use-biblatex: true
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 15,      # Set default width of plots
+  fig.height = 15,     # Set default height of plots
+  fig.align = "center" # Center-align plots
 )
 ```
 
@@ -29,6 +32,7 @@ library(magrittr)
 library(spatstat)
 library(ggplot2)
 library(tidyr)
+library(cowplot)
 ```
 
 Let's consider using `spagg` to analyze a multiplexed immunohistochemistry (mIHC) dataset generated from a non-small cell lung cancer study by @johnson2021cancer. Let's examine the spatial distribution of CD4 T cells and examine its association with major histocompatibility complex II (MHCII) status, a tumor-level label. We will use Ripley's K to characterize the spatial distribution of CD4+ T cells. 
@@ -74,6 +78,49 @@ lung_df_tumor <- lung_df_tumor %>% filter(!is.na(type))
 
 # Show the first few rows of the data
 head(lung_df_tumor)
+```
+
+We first start by plotting the ROIs for an example image. Consider the first sample, `PID=#01 0-889-121` which has five ROIs. We plot the cells in each of these ROIs below.
+
+```{r plot of ROIs}
+# Select the first sample
+example <- lung_df %>% dplyr::filter(PID == "#01 0-889-121")
+
+# Plot each of the ROIs and save in a list
+plot.list <- lapply(1:5, function(i) list())
+
+for (id.i in unique(example$id)) {
+  
+  # Subset
+  example.id <- example %>% dplyr::filter(id == id.i)
+  
+  # ROI number
+  roi <- which(unique(example$id) %in% id.i)
+
+  # Plot
+  pp <- example.id %>%
+    dplyr::filter(!is.na(type)) %>%
+    ggplot(aes(x = x, y = y, color = type)) +
+    geom_point() +
+    theme_bw() +
+    ggtitle(paste0("ROI ", roi)) +
+    labs(color = "Cell Type") 
+  
+  # Save
+  plot.list[[roi]] <- pp
+}
+
+# Construct the full plot
+# par(mfrow = c(3,2))
+# plot.list[[1]]
+# plot.list[[2]]
+# plot.list[[3]]
+# plot.list[[4]]
+# plot.list[[5]]
+# par(mfrow = c(1,1))
+cowplot::plot_grid(plot.list[[1]], plot.list[[2]], 
+                   plot.list[[3]], plot.list[[4]],
+                   plot.list[[5]], nrow = 3, ncol = 2)
 ```
 
 We will first consider different approaches to averaging Ripely's K across ROIs within a tumor sample. Let's start by defining some notation. Suppose for sample $i$ we have $R_i$ ROIs. Let $n_{ir}$ be the number of cells in sample $i$ ROI $r$. Let $A_{ir}$ represent the area of sample $i$ ROI $r$. Let $\hat K_{ir}$ represent the spatial distribution of CD4+ T cells evaluate at radius $30$. 

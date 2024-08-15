@@ -30,7 +30,8 @@ Suggests:
     tidyr,
     spatstat.utils,
     spatstat.univar,
-    SPOT
+    SPOT,
+    cowplot
 VignetteBuilder: knitr
 Remotes: yaowuliu/ACAT, sarahsamorodnitsky/SPOT
 URL: https://sarahsamorodnitsky.github.io/spagg/
