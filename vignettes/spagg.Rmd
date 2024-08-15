@@ -22,7 +22,7 @@ knitr::opts_chunk$set(
 )
 ```
 
-In this vignette, we will demonstrate how to use the `spagg` package to aggregate replicated spatial summary statistics estimated across multiple regions-of-interest (ROIs) imaged from the same biospecimen, such as a tumor sample. We may possess data for these specimens from multiplexed immunofluorescence imaging, which yields spatial information on the cells residing in the tissue.
+In this vignette, we will demonstrate how to use the `spagg` package to aggregate replicated spatial summary statistics estimated across multiple regions-of-interest (ROIs) taken from the same tissue sample, such as from a tumor. We may possess data for these samples from multiplexed immunofluorescence imaging, which yields spatial information on the cells residing in the tissue.
 
 ```{r setup, message = FALSE}
 # Loading in packages
@@ -111,17 +111,12 @@ for (id.i in unique(example$id)) {
 }
 
 # Construct the full plot
-# par(mfrow = c(3,2))
-# plot.list[[1]]
-# plot.list[[2]]
-# plot.list[[3]]
-# plot.list[[4]]
-# plot.list[[5]]
-# par(mfrow = c(1,1))
 cowplot::plot_grid(plot.list[[1]], plot.list[[2]], 
                    plot.list[[3]], plot.list[[4]],
                    plot.list[[5]], nrow = 3, ncol = 2)
 ```
+
+## Weighted Aggregations
 
 We will first consider different approaches to averaging Ripely's K across ROIs within a tumor sample. Let's start by defining some notation. Suppose for sample $i$ we have $R_i$ ROIs. Let $n_{ir}$ be the number of cells in sample $i$ ROI $r$. Let $A_{ir}$ represent the area of sample $i$ ROI $r$. Let $\hat K_{ir}$ represent the spatial distribution of CD4+ T cells evaluate at radius $30$. 
 
@@ -193,7 +188,9 @@ for (i in 1:length(ids)) {
 head(results)
 ```
 
-Some of the Ripley's K estimates will be `NaN`s as a result of there being only $0$ or $1$ CD4+ T cell in the corresponding image. We will remove these ROIs from our analysis. We can now visualize the distribution of the spatial summaries within each image as an illustration of the variation in spatial distribution of CD4+ T cells across ROIs. The figure below highlights the variation in Ripley's K statistics within a single sample. 
+Some of the Ripley's K estimates will be `NaN`s because there the corresponding image only contained $0$ or $1$ CD4+ T cell. We will remove these ROIs from our analysis. 
+
+We can now visualize the distribution of the spatial summaries within each image as an illustration of the variation in spatial distribution of CD4+ T cells across ROIs. 
 
 ```{r remove NAs and plot}
 # Remove NAs
@@ -269,7 +266,13 @@ summary(landau.glm)$coef[2,4]
 
 We did not find any significant associations between the spatial distribution of CD4 T cells as estimated by Ripley's K and MHCII-high status at a radius of $r=30$. 
 
-We now illustrate using ensemble testing to test the same hypothesis. `spagg` contains implementations for three different approaches:
+## Ensemble Approaches
+
+We now illustrate using ensemble testing to test the same hypothesis. These ensemble approaches consider multiple random weights used to construct the aggregations of the spatial summary statistics. For each set of random weights, we test for an association between the weighted aggregation and outcome. We repeat this for many random weights and combine the resulting p-values using a p-value combination method. For this purpose, we use the Cauchy combination test @liu2020cauchy. 
+
+The motivation behind these ensemble approaches is that the best set of weights (the weights that will yield the highest power) is generally unknown at the outset. For this reason, considering many different possible weights may gain us more power because we may capture the true relationship between the aggregated spatial summary statistics and sample-level outcome. 
+
+`spagg` contains implementations for three different approaches:
 
 - Standard ensemble testing: in this approach, `spagg` randomly generates weights from a standard normal distribution which are used to construct a weighted mean of the Ripley's K estimates obtained from each ROI. This process is repeated many times. For each random set of weights, the association between the weighted mean spatial summary and sample-level outcomes is tested. The resulting p-values are combined using the Cauchy combination test. This approach is contained in the `ensemble.avg` function. 
 
@@ -277,7 +280,7 @@ We now illustrate using ensemble testing to test the same hypothesis. `spagg` co
 
 - Combination testing: in this approach, `spagg` randomly generates weights from a standard normal distribution and uses these weights as well as the number of cells in each ROI to construct a weighted mean of Ripley's K estimates. This process is repeated many times and the resulting p-values are combined using the Cauchy combination test. This approach is contained in the `combo.weight.avg` function. 
 
-We now run each of these approaches to testing.
+We now run each of these approaches to testing using the `results` data.frame we constructed above. 
 
 ```{r ensemble}
 # Add the outcome back into the data
@@ -301,7 +304,7 @@ resample.res$pval
 combo.res$pval
 ```
 
-The ensemble p-values also show no significance in the association between the spatial clustering of CD4+ T cells and MHCII-high status among tumor samples. 
+The ensemble p-values also show no significance in the association between the spatial clustering of CD4+ T cells and MHCII-high status among tumor samples. This 
 
 # References
 
