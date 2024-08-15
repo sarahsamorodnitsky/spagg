@@ -66,9 +66,9 @@
     
 <p>In this vignette, we will demonstrate how to use the
 <code>spagg</code> package to aggregate replicated spatial summary
-statistics estimated across multiple regions-of-interest (ROIs) imaged
-from the same biospecimen, such as a tumor sample. We may possess data
-for these specimens from multiplexed immunofluorescence imaging, which
+statistics estimated across multiple regions-of-interest (ROIs) taken
+from the same tissue sample, such as from a tumor. We may possess data
+for these samples from multiplexed immunofluorescence imaging, which
 yields spatial information on the cells residing in the tissue.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Loading in packages</span></span>
@@ -180,17 +180,13 @@ plot the cells in each of these ROIs below.</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Construct the full plot</span></span>
-<span><span class="co"># par(mfrow = c(3,2))</span></span>
-<span><span class="co"># plot.list[[1]]</span></span>
-<span><span class="co"># plot.list[[2]]</span></span>
-<span><span class="co"># plot.list[[3]]</span></span>
-<span><span class="co"># plot.list[[4]]</span></span>
-<span><span class="co"># plot.list[[5]]</span></span>
-<span><span class="co"># par(mfrow = c(1,1))</span></span>
 <span><span class="fu">cowplot</span><span class="fu">::</span><span class="fu"><a href="https://wilkelab.org/cowplot/reference/plot_grid.html" class="external-link">plot_grid</a></span><span class="op">(</span><span class="va">plot.list</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, <span class="va">plot.list</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, </span>
 <span>                   <span class="va">plot.list</span><span class="op">[[</span><span class="fl">3</span><span class="op">]</span><span class="op">]</span>, <span class="va">plot.list</span><span class="op">[[</span><span class="fl">4</span><span class="op">]</span><span class="op">]</span>,</span>
 <span>                   <span class="va">plot.list</span><span class="op">[[</span><span class="fl">5</span><span class="op">]</span><span class="op">]</span>, nrow <span class="op">=</span> <span class="fl">3</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
 <p><img src="spagg_files/figure-html/plot%20of%20ROIs-1.png" width="1440" style="display: block; margin: auto;"></p>
+<div class="section level3">
+<h3 id="weighted-aggregations">Weighted Aggregations<a class="anchor" aria-label="anchor" href="#weighted-aggregations"></a>
+</h3>
 <p>We will first consider different approaches to averaging Ripely’s K
 across ROIs within a tumor sample. Let’s start by defining some
 notation. Suppose for sample
@@ -292,17 +288,15 @@ run.</p>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> #01 0-889-121 #01 0-889-121 P44_[44311,17766].im3      0        5 <span style="text-decoration: underline;">333</span>936.</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> #01 0-889-121 #01 0-889-121 P44_[45366,16647].im3  <span style="text-decoration: underline;">27</span>781.       9 <span style="text-decoration: underline;">333</span>376.</span></span>
 <span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> #02 1-037-393 #02 1-037-393 P44_[56576,16907].im3    <span style="color: #BB0000;">NaN</span>        0  <span style="text-decoration: underline;">52</span>210.</span></span></code></pre></div>
-<p>Some of the Ripley’s K estimates will be <code>NaN</code>s as a
-result of there being only
+<p>Some of the Ripley’s K estimates will be <code>NaN</code>s because
+there the corresponding image only contained
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0</mn><annotation encoding="application/x-tex">0</annotation></semantics></math>
 or
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1</mn><annotation encoding="application/x-tex">1</annotation></semantics></math>
-CD4+ T cell in the corresponding image. We will remove these ROIs from
-our analysis. We can now visualize the distribution of the spatial
-summaries within each image as an illustration of the variation in
-spatial distribution of CD4+ T cells across ROIs. The figure below
-highlights the variation in Ripley’s K statistics within a single
-sample.</p>
+CD4+ T cell. We will remove these ROIs from our analysis.</p>
+<p>We can now visualize the distribution of the spatial summaries within
+each image as an illustration of the variation in spatial distribution
+of CD4+ T cells across ROIs.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Remove NAs</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="va">results</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">results</span><span class="op">$</span><span class="va">spatial</span><span class="op">)</span>,<span class="op">]</span></span>
@@ -387,8 +381,24 @@ methods.</p>
 distribution of CD4 T cells as estimated by Ripley’s K and MHCII-high
 status at a radius of
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>30</mn></mrow><annotation encoding="application/x-tex">r=30</annotation></semantics></math>.</p>
+</div>
+<div class="section level3">
+<h3 id="ensemble-approaches">Ensemble Approaches<a class="anchor" aria-label="anchor" href="#ensemble-approaches"></a>
+</h3>
 <p>We now illustrate using ensemble testing to test the same hypothesis.
-<code>spagg</code> contains implementations for three different
+These ensemble approaches consider multiple random weights used to
+construct the aggregations of the spatial summary statistics. For each
+set of random weights, we test for an association between the weighted
+aggregation and outcome. We repeat this for many random weights and
+combine the resulting p-values using a p-value combination method. For
+this purpose, we use the Cauchy combination test <span class="citation">Liu and Xie (2020)</span>.</p>
+<p>The motivation behind these ensemble approaches is that the best set
+of weights (the weights that will yield the highest power) is generally
+unknown at the outset. For this reason, considering many different
+possible weights may gain us more power because we may capture the true
+relationship between the aggregated spatial summary statistics and
+sample-level outcome.</p>
+<p><code>spagg</code> contains implementations for three different
 approaches:</p>
 <ul>
 <li><p>Standard ensemble testing: in this approach, <code>spagg</code>
@@ -413,7 +423,8 @@ times and the resulting p-values are combined using the Cauchy
 combination test. This approach is contained in the
 <code>combo.weight.avg</code> function.</p></li>
 </ul>
-<p>We now run each of these approaches to testing.</p>
+<p>We now run each of these approaches to testing using the
+<code>results</code> data.frame we constructed above.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Add the outcome back into the data</span></span>
 <span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">results</span>, </span>
@@ -439,7 +450,8 @@ combination test. This approach is contained in the
 <span><span class="co">#&gt; [1] 0.4716415</span></span></code></pre></div>
 <p>The ensemble p-values also show no significance in the association
 between the spatial clustering of CD4+ T cells and MHCII-high status
-among tumor samples.</p>
+among tumor samples. This</p>
+</div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
@@ -470,9 +482,16 @@ Landau, Sabine, Sophia Rabe-Hesketh, and Ian P Everall. 2004.
 Bivariate Spatial Point Patterns.”</span> <em>Biometrical Journal:
 Journal of Mathematical Methods in Biosciences</em> 46 (1): 19–34.
 </div>
+<div id="ref-liu2020cauchy" class="csl-entry">
+Liu, Yaowu, and Jun Xie. 2020. <span>“Cauchy Combination Test: A
+Powerful Test with Analytic p-Value Calculation Under Arbitrary
+Dependency Structures.”</span> <em>Journal of the American Statistical
+Association</em> 115 (529): 393–402.
 </div>
 </div>
-  </main>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 
