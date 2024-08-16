@@ -14,31 +14,24 @@ use-biblatex: true
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.width = 7,      # Set default width of plots
+  fig.height = 8,     # Set default height of plots
+  fig.align = "center" # Center-align plots
 )
 ```
 
 ```{r setup}
 library(spagg)
 library(SPOT)
-library(dplyr)
 library(magrittr)
-library(spatstat)
+library(dplyr)
 library(ggplot2)
-library(tidyr)
 ```
 
 To apply spatial summary statistics, like Ripley's K, in analyses of multiplexed spatial proteomics imaging data, the user is required to select a radius in which to quantify the degree of clustering, repulsion, or lack thereof. The optimal radius, however, is typically unknown beforehand. To this end, it can be helpful to consider a range of candidate radii at which to calculate Ripley's K and test for an association at each radius, aggregating the resulting p-values. This is the idea behind the SPatial Omnibus Test (SPOT) @samorodnitsky2024spatial. In this vignette, we discuss integrating `spagg` with SPOT using the associated R package, `SPOT`. This will allow us to compute Ripley's K at several candidate radii, aggregate the resulting spatial summary statistics for a given radius within a sample across regions-of-interest (ROIs), test for an association between the aggregated spatial summary and an outcome, and combine the results across radii. 
 
-To start, first ensure the `SPOT` `R` package is available on your computer. To download, follow the instructions given here:
-
-```{r downloading SPOT, eval = FALSE}
-library(devtools)
-devtools::install_github("sarahsamorodnitsky/SPOT")
-library(SPOT)
-```
-
-For this analysis, we will use the lung cancer dataset used in the `spagg` vignette. As described in that vignette, we will downloaded the data from http://juliawrobel.com/MI_tutorial/MI_Data.html but is also available from the `VectraPolarisData` R package. For the purposes of this illustration, we do some basic tidying of the data prior to analysis. The steps to this are similar to those given in the link given above. These steps are shown below. 
+For this analysis, we will use the non-small cell lung cancer dataset used in another `spagg` vignette. As described there, we will downloaded the data from http://juliawrobel.com/MI_tutorial/MI_Data.html but is also available from the `VectraPolarisData` R package. For the purposes of this illustration, we do some basic tidying of the data prior to analysis. The steps to this are similar to those given in the link given above. These steps are shown below. 
 
 ```{r data}
 # Load in the data
@@ -79,18 +72,11 @@ lung_df_tumor <- lung_df_tumor %>% filter(!is.na(type))
 head(lung_df_tumor)
 ```
 
-There are four immune cell types available in this dataset: CD14+ cell, CD4+ T cell, CD8+ T cell, and CD19+ B cell. We will examine the pairwise colocalization of each cell type and its association with a sample exhibiting an MHCII-high tumor microenvironment (TME). Here, we generate each pair of cell types:
+There are four immune cell types available in this dataset: CD14+ cell, CD4+ T cell, CD8+ T cell, and CD19+ B cell. We will examine the pairwise colocalization of CD4+ T cells and tumor cells as well as CD8+ T cells and tumor cells and their associations with a sample exhibiting an MHCII-high tumor microenvironment (TME). 
 
-```{r pairs of cells}
-# Save the cell types
-cell.types <- unique(lung_df_tumor$type)[3:6]
+As described in the introductory vignette, `spagg` contains six approaches for aggregating spatial summaries at a given radius. Three of these approaches are weighted means and the other three are ensemble approaches. Currently, the `SPOT` package does not accommodate incorporating ensemble testing into the framework. This feature is in development. For now, we will focus on applying the first three weighted means to test for an association with MHCII-high TME. 
 
-# Generate all pairs of cells
-pairs <- t(combn(cell.types, 2))
-```
-As described in the introductory vignette, `spagg` contains six approaches for aggregating spatial summaries at a given radius. 
-
-The first three approaches are weighted means of the summary statistics:
+The first three approaches are weighted means of the summary statistics are given below:
 
 (1) 
 \begin{equation*}
@@ -106,17 +92,9 @@ The first three approaches are weighted means of the summary statistics:
   \bar K_i^{Landau} = \frac{\sum_{r=1}^{R_i} A_{ir}}{\sum_{r=1}^{R_i} n_{ir}} \sum_{r=1}^{R_i} \frac{n^2_{ir}}{A_{ir}} \hat K_{ir} 
 \end{equation*}
 
-The last three are ensemble approaches which involve generating random weights used to aggregate the spatial summaries:
+The steps to our analysis are as follows:
 
-(4) Ensemble testing: in this approach, `spagg` randomly generates weights from a standard normal distribution which are used to construct a weighted mean of the Ripley's K estimates obtained from each ROI. This process is repeated many times. For each random set of weights, the association between the weighted mean spatial summary and sample-level outcomes is tested. The resulting p-values are combined using the Cauchy combination test. This approach is contained in the `ensemble.avg` function. 
-
-(5) Resampling: in this approach, `spagg` randomly samples one spatial summary statisti per sample and tests for an association with the sample-level outcome. This process is repeated many times and the resulting p-values are combined using the Cauchy combination test. This approach is contained in the `resampling.avg` function. 
-
-(6) Combination testing: in this approach, `spagg` randomly generates weights from a standard normal distribution and uses these weights as well as the number of cells in each ROI to construct a weighted mean of Ripley's K estimates. This process is repeated many times and the resulting p-values are combined using the Cauchy combination test. This approach is contained in the `combo.weight.avg` function. 
-
-We will illustrate applying each of these six methods, as well as a standard arithmetic mean, within the SPOT framework. The steps to our analysis are as follows:
-
-1. We will determine a range of candidate radii in advance. For this analysis, we will use 10 radii between $0$ and $30$. 
+1. We will determine a range of candidate radii in advance. For this analysis, we will use Ripley's rule of thumb and consider radii between $0$ and $0.25$ times the shortest length of any image in the dataset. 
 
 2. We will compute Ripley's K for each radius $r = 0, 10, 20, 30$ and for each ROI. Within each sample, we will aggregate the spatial summaries across ROIs using an arithmetic mean, the Diggle mean, the Landau mean, and the Baddeley mean. We will then test for an association between the aggregated spatial summaries and MHCII-high status. At the end, we will aggregate the p-values using the Cauchy combination test (CCT) @liu2020cauchy. 
 
@@ -124,4 +102,116 @@ We will illustrate applying each of these six methods, as well as a standard ari
 
 4. At the end, we will assess which cell type pairs have significant associations with MHCII-high status. 
 
-Note that this analysis differs from the analysis presented in the manuscript associated with this package. There, we considered a wider range of radii and more ensemble replications. For the purposes of illustration and simplicity, we reduce the number of radii and the number of ensemble replications. 
+We first start by computing the range of radii to consider. 
+
+```{r computing the radii}
+# Calculate the radii 
+smallest.dim <- lung_df_tumor %>%
+  dplyr::group_by(PID) %>%
+  dplyr::summarize(x.range = abs(max(x) - min(x)), 
+                   y.range = abs(max(y) - min(y)),
+                   min = min(x.range, y.range))
+
+# Set the radii by Ripley's rule
+radii <- seq(0, 0.25 * min(smallest.dim$min), length.out = 100)
+```
+
+Next, we iterate through the two pairs of cell types, calculating Ripley's K for each radius value, and computing each
+of our weighted averages (and a standard arithmetic mean) for each sample. At the end, we will test for an association between each average and MHCII-status. All of this can be done using the `SPOT` package which allows the user to select an aggregation method to average spatial summary statistics across ROIs.  
+
+We first consider the colocalization of CD4+ T cells and tumor cells for each aggregation method. We also adjust for patient age in our analysis.
+
+```{r running SPOT for CD4 T and tumor}
+# Using an arithmetic mean
+cd4.tumor.mean.res <- SPOT::spot(data = lung_df_tumor, 
+                                 radii = radii,
+                                 outcome = "mhcII_high", 
+                                 censor = NULL,
+                                 model.type = "logistic",
+                                 use.K = TRUE,
+                                 homogeneous = TRUE,
+                                 adjustments = "age_at_diagnosis",
+                                 marked = TRUE,
+                                 cell.type = c("CD4+ T cell", "Tumor"),
+                                 pick.roi = "average")
+
+# Using the Diggle mean
+cd4.tumor.diggle.res <- SPOT::spot(data = lung_df_tumor, 
+                                 radii = radii,
+                                 outcome = "mhcII_high", 
+                                 censor = NULL,
+                                 model.type = "logistic",
+                                 use.K = TRUE,
+                                 homogeneous = TRUE,
+                                 adjustments = "age_at_diagnosis",
+                                 marked = TRUE,
+                                 cell.type = c("CD4+ T cell", "Tumor"),
+                                 pick.roi = "diggle")
+
+# Using the Baddeley mean
+cd4.tumor.baddeley.res <- SPOT::spot(data = lung_df_tumor, 
+                                 radii = radii,
+                                 outcome = "mhcII_high", 
+                                 censor = NULL,
+                                 model.type = "logistic",
+                                 use.K = TRUE,
+                                 homogeneous = TRUE,
+                                 adjustments = "age_at_diagnosis",
+                                 marked = TRUE,
+                                 cell.type = c("CD4+ T cell", "Tumor"),
+                                 pick.roi = "baddeley")
+
+# Using the Landau mean
+cd4.tumor.landau.res <- SPOT::spot(data = lung_df_tumor, 
+                                 radii = radii,
+                                 outcome = "mhcII_high", 
+                                 censor = NULL,
+                                 model.type = "logistic",
+                                 use.K = TRUE,
+                                 homogeneous = TRUE,
+                                 adjustments = "age_at_diagnosis",
+                                 marked = TRUE,
+                                 cell.type = c("CD4+ T cell", "Tumor"),
+                                 pick.roi = "landau")
+
+# Create a data.frame to show the p-values
+cd4.tumor.df <- data.frame(
+  Method = c("Mean", "Diggle", "Baddeley", "Landau"),
+  P.Value = c(cd4.tumor.mean.res$overall.pval, cd4.tumor.diggle.res$overall.pval,
+              cd4.tumor.baddeley.res$overall.pval, cd4.tumor.landau.res$overall.pval)
+)
+
+# Display
+cd4.tumor.df
+```
+
+We can also examine how the p-values associated with each aggregated method varied across radii. Below, we plot the log10-transformed p-value as a function of the radius to examine how significance varies. 
+
+```{r plotting p-value vs. radii}
+# First, combine the results together across methods
+results <- dplyr::bind_rows(
+  cd4.tumor.mean.res$pval.df %>% dplyr::select(radius, pval),
+  cd4.tumor.diggle.res$pval.df %>% dplyr::select(radius, pval),
+  cd4.tumor.baddeley.res$pval.df %>% dplyr::select(radius, pval),
+  cd4.tumor.landau.res$pval.df %>% dplyr::select(radius, pval),
+  .id = "source"
+)
+
+# Rename the "source" column, which indicates the mean type
+colnames(results)[1] <- "Mean"
+
+# Rename the values of the Mean column
+results$Mean <- factor(results$Mean)
+levels(results$Mean) <- c("Mean", "Diggle", "Baddeley", "Landau")
+
+# Plot the log10-transformed p-values
+results %>%
+  dplyr::mutate(log10.pval = -log10(pval)) %>%
+  ggplot(aes(x = radius, y = log10.pval, color = Mean)) +
+  geom_point() +
+  theme_bw() +
+  xlab("Radius") + ylab("-log10(P-Value)") +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  ggtitle("P-Values for Association Between Tumor and CD4+ T Cell \n Colocalization and MHCII-High Status Across Radii")
+```
+The above plot illustrates how the significance of the association between tumor-CD4+ T cell colocalization and MHCII-high status varies as a function of aggregation method (arithmetic mean, Diggle mean, Baddeley mean, or Landau mean) and as a function of radius. The dashed line indicates significance at an $\alpha=0.05$ level. Log10-transformed p-values greater than this line are significant. Between a radius of approximately $7$ and $12$, all four means show significance. After approximately a radius of $40$, only the Baddeley mean shows consistent significance. This aligns with the omnibus p-value for the Baddeley mean being the lowest among the four options shown above.  
