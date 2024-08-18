@@ -1,0 +1,312 @@
+---
+title: "Applying spagg to a Non-Small Cell Lung Cancer Data"
+output: rmarkdown::html_vignette
+bibliography: bibliography.bib  
+vignette: >
+  %\VignetteIndexEntry{spagg}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+header-includes:
+   - \usepackage{amsmath}
+   - \usepackage{amssymb}
+use-biblatex: true
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 15,      # Set default width of plots
+  fig.height = 15,     # Set default height of plots
+  fig.align = "center" # Center-align plots
+)
+```
+
+In this vignette, we will demonstrate how to use the `spagg` package to aggregate replicated spatial summary statistics estimated across multiple regions-of-interest (ROIs) taken from the same tissue sample, such as from a tumor. We may possess data for these samples from multiplexed immunofluorescence imaging, which yields spatial information on the cells residing in the tissue.
+
+```{r setup, message = FALSE}
+# Loading in packages
+library(spagg)
+library(dplyr)
+library(magrittr)
+library(spatstat)
+library(ggplot2)
+library(tidyr)
+library(cowplot)
+```
+
+Let's consider using `spagg` to analyze a multiplexed immunohistochemistry (mIHC) dataset generated from a non-small cell lung cancer study by @johnson2021cancer. Let's examine the spatial distribution of CD4 T cells and examine its association with major histocompatibility complex II (MHCII) status, a tumor-level label. We will use Ripley's K to characterize the spatial distribution of CD4+ T cells. 
+
+Since this study cpatured multiple ROIs per tumor sample we need a way of handling multiple estimates of Ripley's K for each sample. `spagg` provides several ways of doing so. 
+
+First, let's load in the data we will use. This dataset will be downloaded from http://juliawrobel.com/MI_tutorial/MI_Data.html but is also available from the `VectraPolarisData` R package. For the purposes of this illustration, we do some basic tidying of the data prior to analysis. The steps to this are similar to those given in the link given above. These steps are shown below. 
+
+```{r data}
+# Load in the data
+load(url("http://juliawrobel.com/MI_tutorial/Data/lung.RDA"))
+
+# Label the immune cell types
+lung_df <- lung_df %>%
+  mutate(type = case_when(
+    phenotype_cd14 == "CD14+" ~ "CD14+ cell",
+    phenotype_cd19 == "CD19+" ~ "CD19+ B cell",
+    phenotype_cd4 == "CD4+" ~ "CD4+ T cell",
+    phenotype_cd8 == "CD8+" ~ "CD8+ T cell",
+    phenotype_other == "Other+" ~ "Other",
+    phenotype_ck == "CK+" ~ "Tumor"
+  ))
+
+# Add a column indicating if a sample has >=5% MHCII+ tumor cells
+lung_df <- lung_df %>%                       
+  dplyr::group_by(patient_id) %>% 
+  dplyr::mutate(mhcII_high = as.numeric(mhcII_status == "high"))
+
+# Change colnames
+colnames(lung_df)[colnames(lung_df) == "patient_id"] <- "PID"
+
+# Add a PID column
+colnames(lung_df)[colnames(lung_df) == "image_id"] <- "id"
+
+# Filter to just cells detected within the tumor
+lung_df_tumor <- lung_df %>% filter(tissue_category == "Tumor")
+
+# Remove grouping
+lung_df_tumor <- lung_df_tumor %>% dplyr::ungroup()
+
+# Remove NA types
+lung_df_tumor <- lung_df_tumor %>% filter(!is.na(type))
+
+# Show the first few rows of the data
+head(lung_df_tumor)
+```
+
+We first start by plotting the ROIs for an example image. Consider the first sample, `PID=#01 0-889-121` which has five ROIs. We plot the cells in each of these ROIs below.
+
+```{r plot of ROIs}
+# Select the first sample
+example <- lung_df %>% dplyr::filter(PID == "#01 0-889-121")
+
+# Plot each of the ROIs and save in a list
+plot.list <- lapply(1:5, function(i) list())
+
+for (id.i in unique(example$id)) {
+  
+  # Subset
+  example.id <- example %>% dplyr::filter(id == id.i)
+  
+  # ROI number
+  roi <- which(unique(example$id) %in% id.i)
+
+  # Plot
+  pp <- example.id %>%
+    dplyr::filter(!is.na(type)) %>%
+    ggplot(aes(x = x, y = y, color = type)) +
+    geom_point() +
+    theme_bw() +
+    ggtitle(paste0("ROI ", roi)) +
+    labs(color = "Cell Type") 
+  
+  # Save
+  plot.list[[roi]] <- pp
+}
+
+# Construct the full plot
+cowplot::plot_grid(plot.list[[1]], plot.list[[2]], 
+                   plot.list[[3]], plot.list[[4]],
+                   plot.list[[5]], nrow = 3, ncol = 2)
+```
+
+## Weighted Aggregations
+
+We will first consider different approaches to averaging Ripely's K across ROIs within a tumor sample. Let's start by defining some notation. Suppose for sample $i$ we have $R_i$ ROIs. Let $n_{ir}$ be the number of cells in sample $i$ ROI $r$. Let $A_{ir}$ represent the area of sample $i$ ROI $r$. Let $\hat K_{ir}$ represent the spatial distribution of CD4+ T cells evaluate at radius $30$. 
+
+`spagg` contains implementations for the following three weighted averages:
+
+(1) 
+\begin{equation*}
+\bar K_i^{Diggle} = \frac{1}{\sum_{r=1}^{R_i} n_{ir}} \sum_{r=1}^{R_i} n_{ir} \hat K_{ir}
+\end{equation*}
+
+(2)
+\begin{equation*}
+  \bar K_i^{Baddeley} = \frac{1}{\sum_{r=1}^{R_i} n^2_{ir}} \sum_{r=1}^{R_i} n^2_{ir} \hat K_{ir} \end{equation*}
+
+(3)
+\begin{equation*}
+  \bar K_i^{Landau} = \frac{\sum_{r=1}^{R_i} A_{ir}}{\sum_{r=1}^{R_i} n_{ir}} \sum_{r=1}^{R_i} \frac{n^2_{ir}}{A_{ir}} \hat K_{ir} 
+\end{equation*}
+
+$\bar K_i^{Diggle}$ (@diggle1991analysis), $\bar K_i^{Baddeley}$ (@baddeley1993analysis), and $\bar K_i^{Landau}$ (@landau2004nonparametric) were each proposed as approaches to aggregating replicated Ripley's K statistics.  
+
+Let's estimate Ripley's K for $r=30$ on each ROI. Note this may take several seconds (up to 30 seconds) to run. 
+
+```{r Kest}
+# Set the radius
+r <- 30
+
+# Save the image IDs
+ids <- unique(lung_df_tumor$id)
+
+# Initialize a data.frame to store the results for each ROI
+results <- lung_df_tumor %>% 
+  dplyr::select(PID, id) %>%
+  dplyr::distinct() %>%
+  dplyr::mutate(spatial = NA,
+                npoints = NA,
+                area = NA)
+ 
+# Iterate through the ROIs (this will take a few seconds)
+for (i in 1:length(ids)) {
+  
+ # Save the ith image
+ image.i <- lung_df_tumor %>%
+   dplyr::filter(id == ids[i]) %>%
+   dplyr::select(x, y, type)
+
+   # Convert to a point process object
+   w <- spatstat.geom::convexhull.xy(image.i$x, image.i$y)
+   image.i.subset <- image.i %>% dplyr::filter(type == "CD4+ T cell")
+   image.ppp <- spatstat.geom::as.ppp(image.i.subset, W = w)
+   marks(image.ppp) <- image.i.subset$type
+
+   # Compute Kest
+   Ki <- spatstat.explore::Kest(image.ppp, r = 0:r)
+  
+   # Calculate the number of points
+   npoints.i <- spatstat.geom::npoints(image.ppp)
+   
+   # Calculate the area
+   area.i <- spatstat.geom::area(image.ppp)
+  
+   # Save the results
+   results[results$id == ids[i],]$spatial <- Ki$iso[r+1]
+   results[results$id == ids[i],]$npoints <- npoints.i
+   results[results$id == ids[i],]$area <- area.i
+}
+
+# View the first few rows
+head(results)
+```
+
+Some of the Ripley's K estimates will be `NaN`s because there the corresponding image only contained $0$ or $1$ CD4+ T cell. We will remove these ROIs from our analysis. 
+
+We can now visualize the distribution of the spatial summaries within each image as an illustration of the variation in spatial distribution of CD4+ T cells across ROIs. 
+
+```{r remove NAs and plot}
+# Remove NAs
+results <- results[!is.na(results$spatial),]
+
+# Visualize the distribution of spatial summaries within each sample
+results %>%
+  dplyr::mutate(PID = factor(PID)) %>%
+  ggplot(aes(x = PID, y = spatial, group = PID)) + 
+  geom_boxplot() +
+  theme_bw() +
+   theme(axis.text.x = element_blank(),  
+         axis.ticks.x = element_blank()) +
+  ggtitle("Ripley's K statistics for ROIs within a each sample") +
+  ylab("Kest")
+```
+
+After that, we will compute the weighted averages given above. We will also compute a standard arithmetic mean as a comparison. Below, we visualize the spread of the various spatial aggregation methods within each sample. For some samples, the averages yield similar values. For others, their values show large variation. 
+
+```{r averages}
+# Compute averages
+results_mean <- results %>%
+    dplyr::group_by(PID) %>%
+    dplyr::summarise_at(dplyr::vars(spatial),
+                        list(~mean(.x), 
+                             ~landau.avg(K.vec = .x, area.vec = area, n.vec = npoints),
+                             ~diggle.avg(K.vec = .x, n.vec = npoints),
+                             ~baddeley.avg(K.vec = .x, n.vec = npoints)))
+
+# Plot the averages
+results_mean %>%
+  tidyr::pivot_longer(2:5, names_to = "mean", values_to = "value") %>%
+  dplyr::mutate(mean = recode(mean, 
+                              "mean" = "Arithmetic Mean",
+                              "landau.avg" = "Landau Mean",
+                              "diggle.avg" = "Diggle Mean",
+                              "baddeley.avg" = "Baddeley Mean")) %>%
+  ggplot(aes(x = PID, y = value, group = mean, color = mean)) +
+  geom_point() +
+  theme_bw() +
+  theme(axis.text.x = element_blank(),  
+        axis.ticks.x = element_blank()) +
+  ylab("Average Kest") +
+  ggtitle("Averaged Ripley's K within each sample") +
+  scale_color_discrete(name = "Aggregation Method")
+```
+
+We now have a data.frame with a column corresponding to each average. Let's add in the MHCII-high status variable so we can do association testing. We would like to test if the spatial arrangement of CD4+ T cells is associated with MHCII-high status. We will compare the significance of this association across the four spatial aggregation methods.  
+
+```{r testing with averages}
+# First, check the ordering matches
+all(unique(lung_df_tumor$PID) == results_mean$PID) # TRUE!
+
+# Add in MHCII-high status
+results_mean$mhcII_high <- lung_df_tumor %>% 
+  dplyr::select(PID, mhcII_high) %>%
+  dplyr::distinct() %>%
+  dplyr::select(mhcII_high) %>%
+  unlist()
+
+# Test for an association between CD4 T cell spatial distributions and MHCII-high status
+mean.glm <- glm(mhcII_high ~ mean, data = results_mean, family = binomial())
+diggle.glm <- glm(mhcII_high ~ diggle.avg, data = results_mean, family = binomial())
+baddeley.glm <- glm(mhcII_high ~ baddeley.avg, data = results_mean, family = binomial())
+landau.glm <- glm(mhcII_high ~ landau.avg, data = results_mean, family = binomial())
+
+# P-values from each approach
+summary(mean.glm)$coef[2,4]
+summary(diggle.glm)$coef[2,4]
+summary(baddeley.glm)$coef[2,4]
+summary(landau.glm)$coef[2,4]
+```
+
+We did not find any significant associations between the spatial distribution of CD4 T cells as estimated by Ripley's K and MHCII-high status at a radius of $r=30$. 
+
+## Ensemble Approaches
+
+We now illustrate using ensemble testing to test the same hypothesis. These ensemble approaches consider multiple random weights used to construct the aggregations of the spatial summary statistics. For each set of random weights, we test for an association between the weighted aggregation and outcome. We repeat this for many random weights and combine the resulting p-values using a p-value combination method. For this purpose, we use the Cauchy combination test @liu2020cauchy. 
+
+The motivation behind these ensemble approaches is that the best set of weights (the weights that will yield the highest power) is generally unknown at the outset. For this reason, considering many different possible weights may gain us more power because we may capture the true relationship between the aggregated spatial summary statistics and sample-level outcome. 
+
+`spagg` contains implementations for three different approaches:
+
+- Standard ensemble testing: in this approach, `spagg` randomly generates weights from a standard normal distribution which are used to construct a weighted mean of the Ripley's K estimates obtained from each ROI. This process is repeated many times. For each random set of weights, the association between the weighted mean spatial summary and sample-level outcomes is tested. The resulting p-values are combined using the Cauchy combination test. This approach is contained in the `ensemble.avg` function. 
+
+- Resampling: in this approach, `spagg` randomly samples one spatial summary statisti per sample and tests for an association with the sample-level outcome. This process is repeated many times and the resulting p-values are combined using the Cauchy combination test. This approach is contained in the `resampling.avg` function. 
+
+- Combination testing: in this approach, `spagg` randomly generates weights from a standard normal distribution and uses these weights as well as the number of cells in each ROI to construct a weighted mean of Ripley's K estimates. This process is repeated many times and the resulting p-values are combined using the Cauchy combination test. This approach is contained in the `combo.weight.avg` function. 
+
+We now run each of these approaches to testing using the `results` data.frame we constructed above. 
+
+```{r ensemble}
+# Add the outcome back into the data
+results <- left_join(results, 
+                     lung_df_tumor %>% dplyr::select(id, PID, mhcII_high) %>% distinct(), 
+                     by = c("id", "PID"))
+
+# Run each ensemble test
+ensemble.res <- ensemble.avg(data = results, group = "PID", 
+                             outcome = "mhcII_high", model = "logistic")
+
+resample.res <- resampling.avg(data = results, group = "PID", 
+                               outcome = "mhcII_high", model = "logistic")
+
+combo.res <- combo.weight.avg(data = results, group = "PID", 
+                              outcome = "mhcII_high", model = "logistic")
+
+# P-values
+ensemble.res$pval
+resample.res$pval
+combo.res$pval
+```
+
+The ensemble p-values also show no significance in the association between the spatial clustering of CD4+ T cells and MHCII-high status among tumor samples. This 
+
+# References
+
+<div id="refs"></div>
+
