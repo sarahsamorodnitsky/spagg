@@ -34,8 +34,8 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/SPOT.html">Considering Multiple Radii in a spagg Analysis</a></li>
-    <li><a class="dropdown-item" href="../articles/test.html">test</a></li>
+<li><a class="dropdown-item" href="../articles/lung_analysis.html">Applying spagg to a Non-Small Cell Lung Cancer Data</a></li>
+    <li><a class="dropdown-item" href="../articles/SPOT.html">Considering Multiple Radii in a spagg Analysis</a></li>
   </ul>
 </li>
       </ul>
@@ -65,132 +65,144 @@
 
     
     
-<p>In this vignette, we will demonstrate how to use the
-<code>spagg</code> package to aggregate replicated spatial summary
-statistics estimated across multiple regions-of-interest (ROIs) taken
-from the same tissue sample, such as from a tumor. We may possess data
-for these samples from multiplexed immunofluorescence imaging, which
-yields spatial information on the cells residing in the tissue.</p>
+<div class="section level3">
+<h3 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
+</h3>
+<p>In this vignette, we illustrate how to use the <code>spagg</code>
+package to analyze multiple spatial point patterns. In particular, we
+will show how to use the functions in this package to construct an
+aggregate spatial summary statistic across point patterns grouped
+together by some higher level factor, such as by tissue sample. We will
+then use this aggregated spatial summary statistic as a predictor in a
+linear model for a group-level/sample-level outcome.</p>
+<p>The motivation behind <code>spagg</code> is that analyses of data
+from multiplexed immunofluorescence and spatial proteomics platforms may
+involve multiple regions-of-interest (ROIs) imaged from the same tissue
+sample. Each ROI shows the spatial location of cells in tissue which can
+be treated as a spatial point pattern. Access to multiple ROIs per
+tissue sample can complicate associative analyses seeking to
+characterize associations between the spatial distribution of cells in
+tissue and sample-level outcomes because we need to test for an
+association between a single sample-level outcome (e.g. survival or
+case/control status) and multiple spatial summary statistics.</p>
+<p>This vignette will use simulated spatial point pattern data. To see
+how this data was generated, please see
+<code>spagg &gt; data-raw &gt; simdata.R</code>.</p>
+<p>We start by loading in the <code>spagg</code> package and our
+simulated data. We show the first few lines of the dataset below. The
+dataset is organized so as to mimic the structure of single-cell,
+spatial images produced by multiplexed immunofluorescence and spatial
+proteomics platforms. Each row corresponds to a detected cell, which is
+enumerated by the <code>cell.id</code> column. The cells are grouped
+together by samples, denoted by the <code>PID</code> column and by
+images within those samples, denoted by the <code>id</code> column. The
+<code>x</code> and <code>y</code> columns give the (x,y) coordinates of
+each cell. The <code>type</code> column denotes the cell type for the
+corresponding row. In this simulated dataset, the possible cell types
+are <code>a</code> and <code>b</code>. Finally, the <code>out</code>
+column gives the sample-level endpoint with which we are interested in
+performing associative analyses. In this simulated dataset, the
+<code>out</code> column is a binary <code>1</code> or <code>0</code>
+indicator.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Loading in packages</span></span>
+<code class="sourceCode R"><span><span class="co"># Load in package</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://sarahsamorodnitsky.github.io/spagg/">spagg</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://magrittr.tidyverse.org" class="external-link">magrittr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://spatstat.org/" class="external-link">spatstat</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://tidyr.tidyverse.org" class="external-link">tidyr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wilkelab.org/cowplot/" class="external-link">cowplot</a></span><span class="op">)</span></span></code></pre></div>
-<p>Let’s consider using <code>spagg</code> to analyze a multiplexed
-immunohistochemistry (mIHC) dataset generated from a non-small cell lung
-cancer study by <span class="citation">Johnson et al. (2021)</span>.
-Let’s examine the spatial distribution of CD4 T cells and examine its
-association with major histocompatibility complex II (MHCII) status, a
-tumor-level label. We will use Ripley’s K to characterize the spatial
-distribution of CD4+ T cells.</p>
-<p>Since this study cpatured multiple ROIs per tumor sample we need a
-way of handling multiple estimates of Ripley’s K for each sample.
-<code>spagg</code> provides several ways of doing so.</p>
-<p>First, let’s load in the data we will use. This dataset will be
-downloaded from <a href="http://juliawrobel.com/MI_tutorial/MI_Data.html" class="external-link uri">http://juliawrobel.com/MI_tutorial/MI_Data.html</a> but is
-also available from the <code>VectraPolarisData</code> R package. For
-the purposes of this illustration, we do some basic tidying of the data
-prior to analysis. The steps to this are similar to those given in the
-link given above. These steps are shown below.</p>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://wilkelab.org/cowplot/" class="external-link">cowplot</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="http://spatstat.org/" class="external-link">spatstat</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; Loading required package: spatstat.data</span></span>
+<span><span class="co">#&gt; Loading required package: spatstat.univar</span></span>
+<span><span class="co">#&gt; spatstat.univar 3.0-0</span></span>
+<span><span class="co">#&gt; Loading required package: spatstat.geom</span></span>
+<span><span class="co">#&gt; spatstat.geom 3.3-2</span></span>
+<span><span class="co">#&gt; Loading required package: spatstat.random</span></span>
+<span><span class="co">#&gt; spatstat.random 3.3-1</span></span>
+<span><span class="co">#&gt; Loading required package: spatstat.explore</span></span>
+<span><span class="co">#&gt; Loading required package: nlme</span></span>
+<span><span class="co">#&gt; spatstat.explore 3.3-1</span></span>
+<span><span class="co">#&gt; Loading required package: spatstat.model</span></span>
+<span><span class="co">#&gt; Loading required package: rpart</span></span>
+<span><span class="co">#&gt; spatstat.model 3.3-1</span></span>
+<span><span class="co">#&gt; Loading required package: spatstat.linnet</span></span>
+<span><span class="co">#&gt; spatstat.linnet 3.2-1</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; spatstat 3.1-1 </span></span>
+<span><span class="co">#&gt; For an introduction to spatstat, type 'beginner'</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
+<span><span class="co">#&gt; The following object is masked from 'package:nlme':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     collapse</span></span>
+<span><span class="co">#&gt; The following objects are masked from 'package:stats':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     filter, lag</span></span>
+<span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
+<span></span>
+<span><span class="co"># Load in data and show first few lines</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">simdata</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">simdata</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   PID            id         x        y cell.id type out</span></span>
+<span><span class="co">#&gt; 1   1 PID.1.image.1 0.4520637 98.93826       1    a   0</span></span>
+<span><span class="co">#&gt; 2   1 PID.1.image.1 2.3684803 97.14292       2    a   0</span></span>
+<span><span class="co">#&gt; 3   1 PID.1.image.1 7.1494031 85.91885       3    a   0</span></span>
+<span><span class="co">#&gt; 4   1 PID.1.image.1 8.9429048 85.35314       4    b   0</span></span>
+<span><span class="co">#&gt; 5   1 PID.1.image.1 2.0692361 89.46432       5    a   0</span></span>
+<span><span class="co">#&gt; 6   1 PID.1.image.1 0.8560718 91.28216       6    b   0</span></span></code></pre></div>
+<p>We can also plot the images for <code>PID=1</code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Load in the data</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/load.html" class="external-link">load</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/connections.html" class="external-link">url</a></span><span class="op">(</span><span class="st">"http://juliawrobel.com/MI_tutorial/Data/lung.RDA"</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Plot the images for PID=1 --</span></span>
 <span></span>
-<span><span class="co"># Label the immune cell types</span></span>
-<span><span class="va">lung_df</span> <span class="op">&lt;-</span> <span class="va">lung_df</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>type <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/case_when.html" class="external-link">case_when</a></span><span class="op">(</span></span>
-<span>    <span class="va">phenotype_cd14</span> <span class="op">==</span> <span class="st">"CD14+"</span> <span class="op">~</span> <span class="st">"CD14+ cell"</span>,</span>
-<span>    <span class="va">phenotype_cd19</span> <span class="op">==</span> <span class="st">"CD19+"</span> <span class="op">~</span> <span class="st">"CD19+ B cell"</span>,</span>
-<span>    <span class="va">phenotype_cd4</span> <span class="op">==</span> <span class="st">"CD4+"</span> <span class="op">~</span> <span class="st">"CD4+ T cell"</span>,</span>
-<span>    <span class="va">phenotype_cd8</span> <span class="op">==</span> <span class="st">"CD8+"</span> <span class="op">~</span> <span class="st">"CD8+ T cell"</span>,</span>
-<span>    <span class="va">phenotype_other</span> <span class="op">==</span> <span class="st">"Other+"</span> <span class="op">~</span> <span class="st">"Other"</span>,</span>
-<span>    <span class="va">phenotype_ck</span> <span class="op">==</span> <span class="st">"CK+"</span> <span class="op">~</span> <span class="st">"Tumor"</span></span>
-<span>  <span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Save the image IDs</span></span>
+<span><span class="va">PID.1.image.ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">simdata</span><span class="op">$</span><span class="va">id</span><span class="op">[</span><span class="va">simdata</span><span class="op">$</span><span class="va">PID</span> <span class="op">==</span> <span class="fl">1</span><span class="op">]</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Add a column indicating if a sample has &gt;=5% MHCII+ tumor cells</span></span>
-<span><span class="va">lung_df</span> <span class="op">&lt;-</span> <span class="va">lung_df</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span>                       </span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">patient_id</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>mhcII_high <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">mhcII_status</span> <span class="op">==</span> <span class="st">"high"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co"># Create a list of plots</span></span>
+<span><span class="va">plot.list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">PID.1.image.ids</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Change colnames</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">lung_df</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">lung_df</span><span class="op">)</span> <span class="op">==</span> <span class="st">"patient_id"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">"PID"</span></span>
-<span></span>
-<span><span class="co"># Add a PID column</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">lung_df</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">lung_df</span><span class="op">)</span> <span class="op">==</span> <span class="st">"image_id"</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="st">"id"</span></span>
-<span></span>
-<span><span class="co"># Filter to just cells detected within the tumor</span></span>
-<span><span class="va">lung_df_tumor</span> <span class="op">&lt;-</span> <span class="va">lung_df</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">tissue_category</span> <span class="op">==</span> <span class="st">"Tumor"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Remove grouping</span></span>
-<span><span class="va">lung_df_tumor</span> <span class="op">&lt;-</span> <span class="va">lung_df_tumor</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">ungroup</a></span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Remove NA types</span></span>
-<span><span class="va">lung_df_tumor</span> <span class="op">&lt;-</span> <span class="va">lung_df_tumor</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">type</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Show the first few rows of the data</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">lung_df_tumor</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 39</span></span></span>
-<span><span class="co">#&gt;   id              PID   cell_id     x     y gender mhcII_status age_at_diagnosis</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>           <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>  <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> #01 0-889-121 … #01 …       5  453    2.5 F      low                        85</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> #01 0-889-121 … #01 …       6  463    2.5 F      low                        85</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> #01 0-889-121 … #01 …      11  464    8.5 F      low                        85</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> #01 0-889-121 … #01 …      12  538   10   F      low                        85</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> #01 0-889-121 … #01 …      21  522   20.5 F      low                        85</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> #01 0-889-121 … #01 …      22  566.  25   F      low                        85</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># ℹ 31 more variables: stage_at_diagnosis &lt;chr&gt;, stage_numeric &lt;dbl&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   pack_years &lt;dbl&gt;, survival_days &lt;dbl&gt;, survival_status &lt;dbl&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   cause_of_death &lt;chr&gt;, adjuvant_therapy &lt;chr&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   time_to_recurrence_days &lt;dbl&gt;, recurrence_or_lung_ca_death &lt;dbl&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   tissue_category &lt;chr&gt;, cd19 &lt;dbl&gt;, cd3 &lt;dbl&gt;, cd14 &lt;dbl&gt;, cd8 &lt;dbl&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   hladr &lt;dbl&gt;, ck &lt;dbl&gt;, dapi &lt;dbl&gt;, entire_cell_axis_ratio &lt;dbl&gt;,</span></span></span>
-<span><span class="co">#&gt; <span style="color: #949494;">#   entire_cell_major_axis &lt;dbl&gt;, entire_cell_minor_axis &lt;dbl&gt;, …</span></span></span></code></pre></div>
-<p>We first start by plotting the ROIs for an example image. Consider
-the first sample, <code>PID=#01 0-889-121</code> which has five ROIs. We
-plot the cells in each of these ROIs below.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Select the first sample</span></span>
-<span><span class="va">example</span> <span class="op">&lt;-</span> <span class="va">lung_df</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">PID</span> <span class="op">==</span> <span class="st">"#01 0-889-121"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Plot each of the ROIs and save in a list</span></span>
-<span><span class="va">plot.list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span>, <span class="kw">function</span><span class="op">(</span><span class="va">i</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="kw">for</span> <span class="op">(</span><span class="va">id.i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">example</span><span class="op">$</span><span class="va">id</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span><span class="co"># Iterate through the image IDs and create a plot for each</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">id.i</span> <span class="kw">in</span> <span class="va">PID.1.image.ids</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  </span>
-<span>  <span class="co"># Subset</span></span>
-<span>  <span class="va">example.id</span> <span class="op">&lt;-</span> <span class="va">example</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">id</span> <span class="op">==</span> <span class="va">id.i</span><span class="op">)</span></span>
+<span>  <span class="va">pp</span> <span class="op">&lt;-</span> <span class="va">simdata</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>          <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">id</span> <span class="op">==</span> <span class="va">id.i</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>          <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span>, color <span class="op">=</span> <span class="va">type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>          <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span> </span>
+<span>          <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
+<span>          <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="va">id.i</span><span class="op">)</span></span>
+<span>  <span class="va">plot.list</span><span class="op">[[</span><span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="va">PID.1.image.ids</span> <span class="op">==</span> <span class="va">id.i</span><span class="op">)</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">pp</span></span>
 <span>  </span>
-<span>  <span class="co"># ROI number</span></span>
-<span>  <span class="va">roi</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">example</span><span class="op">$</span><span class="va">id</span><span class="op">)</span> <span class="op"><a href="https://rdrr.io/r/base/match.html" class="external-link">%in%</a></span> <span class="va">id.i</span><span class="op">)</span></span>
-<span></span>
-<span>  <span class="co"># Plot</span></span>
-<span>  <span class="va">pp</span> <span class="op">&lt;-</span> <span class="va">example.id</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">type</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span>, color <span class="op">=</span> <span class="va">type</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"ROI "</span>, <span class="va">roi</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
-<span>    <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>color <span class="op">=</span> <span class="st">"Cell Type"</span><span class="op">)</span> </span>
-<span>  </span>
-<span>  <span class="co"># Save</span></span>
-<span>  <span class="va">plot.list</span><span class="op">[[</span><span class="va">roi</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">pp</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># Construct the full plot</span></span>
 <span><span class="fu">cowplot</span><span class="fu">::</span><span class="fu"><a href="https://wilkelab.org/cowplot/reference/plot_grid.html" class="external-link">plot_grid</a></span><span class="op">(</span><span class="va">plot.list</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span>, <span class="va">plot.list</span><span class="op">[[</span><span class="fl">2</span><span class="op">]</span><span class="op">]</span>, </span>
 <span>                   <span class="va">plot.list</span><span class="op">[[</span><span class="fl">3</span><span class="op">]</span><span class="op">]</span>, <span class="va">plot.list</span><span class="op">[[</span><span class="fl">4</span><span class="op">]</span><span class="op">]</span>,</span>
 <span>                   <span class="va">plot.list</span><span class="op">[[</span><span class="fl">5</span><span class="op">]</span><span class="op">]</span>, nrow <span class="op">=</span> <span class="fl">3</span>, ncol <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spagg_files/figure-html/plot%20of%20ROIs-1.png" width="1440" style="display: block; margin: auto;"></p>
+<p><img src="spagg_files/figure-html/view%20the%20data-1.png" width="768" style="display: block; margin: auto;">
+The above plots show simulated data, but illustrate a common challenge
+that arises in analyzing grouped point patterns reflecting multiple ROIs
+of a tissue sample: heterogeneity in the spatial clustering patterns.
+Each ROI shows a different clusterig pattern among the <code>a</code>
+and <code>b</code> cell types.</p>
+<p>We are going to use the spatial summary statistic, Ripley’s K, to
+characterize the degree of adherence to clustering, repulsion, or
+complete spatial randomness in each ROI. The <code>spagg</code> package
+the contains six approaches for handling multiple spatial summary
+statistics for associative analyses. Three of these approaches are
+weighted aggregations of the spatial summaries using fixed weights. The
+other three are ensemble approaches which generate random weights used
+to construct weighted aggregations. Within each ensemble replication, we
+test for an association between the weighted aggregation and the
+sample-level outcome. We then ensemble the resulting p-values for an
+omnibus test.</p>
+<p>We first start by illustrating the weighted aggregations.</p>
+</div>
 <div class="section level3">
 <h3 id="weighted-aggregations">Weighted Aggregations<a class="anchor" aria-label="anchor" href="#weighted-aggregations"></a>
 </h3>
 <p>We will first consider different approaches to averaging Ripely’s K
-across ROIs within a tumor sample. Let’s start by defining some
-notation. Suppose for sample
+across ROIs within a sample. Let’s start by defining some notation.
+Suppose for sample
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>i</mi><annotation encoding="application/x-tex">i</annotation></semantics></math>
 we have
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>R</mi><mi>i</mi></msub><annotation encoding="application/x-tex">R_i</annotation></semantics></math>
@@ -223,26 +235,28 @@ weighted averages:</p>
 \end{equation*}</annotation></semantics></math></p></li>
 </ol>
 <p><math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mover><mi>K</mi><mo accent="true">‾</mo></mover><mi>i</mi><mrow><mi>D</mi><mi>i</mi><mi>g</mi><mi>g</mi><mi>l</mi><mi>e</mi></mrow></msubsup><annotation encoding="application/x-tex">\bar K_i^{Diggle}</annotation></semantics></math>
-(<span class="citation">Diggle, Lange, and Beneš (1991)</span>),
+(<span class="citation">@diggle1991analysis</span>),
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mover><mi>K</mi><mo accent="true">‾</mo></mover><mi>i</mi><mrow><mi>B</mi><mi>a</mi><mi>d</mi><mi>d</mi><mi>e</mi><mi>l</mi><mi>e</mi><mi>y</mi></mrow></msubsup><annotation encoding="application/x-tex">\bar K_i^{Baddeley}</annotation></semantics></math>
-(<span class="citation">Baddeley et al. (1993)</span>), and
+(<span class="citation">@baddeley1993analysis</span>), and
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msubsup><mover><mi>K</mi><mo accent="true">‾</mo></mover><mi>i</mi><mrow><mi>L</mi><mi>a</mi><mi>n</mi><mi>d</mi><mi>a</mi><mi>u</mi></mrow></msubsup><annotation encoding="application/x-tex">\bar K_i^{Landau}</annotation></semantics></math>
-(<span class="citation">Landau, Rabe-Hesketh, and Everall (2004)</span>)
-were each proposed as approaches to aggregating replicated Ripley’s K
+(<span class="citation">@landau2004nonparametric</span>) were each
+proposed as approaches to aggregating replicated Ripley’s K
 statistics.</p>
-<p>Let’s estimate Ripley’s K for
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>30</mn></mrow><annotation encoding="application/x-tex">r=30</annotation></semantics></math>
+<p>We first consider a univariate analysis where we consider only one
+cell type. We start with analyzing cell type <code>a</code> only and its
+associations with outcomes. We estimate Ripley’s K for
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>10</mn></mrow><annotation encoding="application/x-tex">r=10</annotation></semantics></math>
 on each ROI. Note this may take several seconds (up to 30 seconds) to
 run.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Set the radius</span></span>
-<span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fl">30</span></span>
+<span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
 <span></span>
 <span><span class="co"># Save the image IDs</span></span>
-<span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">lung_df_tumor</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
+<span><span class="va">ids</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">simdata</span><span class="op">$</span><span class="va">id</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Initialize a data.frame to store the results for each ROI</span></span>
-<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="va">lung_df_tumor</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span><span class="va">cell.a.results</span> <span class="op">&lt;-</span> <span class="va">simdata</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">PID</span>, <span class="va">id</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>spatial <span class="op">=</span> <span class="cn">NA</span>,</span>
@@ -253,13 +267,13 @@ run.</p>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">ids</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  </span>
 <span> <span class="co"># Save the ith image</span></span>
-<span> <span class="va">image.i</span> <span class="op">&lt;-</span> <span class="va">lung_df_tumor</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span> <span class="va">image.i</span> <span class="op">&lt;-</span> <span class="va">simdata</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, <span class="va">type</span><span class="op">)</span></span>
 <span></span>
 <span>   <span class="co"># Convert to a point process object</span></span>
 <span>   <span class="va">w</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/convexhull.xy.html" class="external-link">convexhull.xy</a></span><span class="op">(</span><span class="va">image.i</span><span class="op">$</span><span class="va">x</span>, <span class="va">image.i</span><span class="op">$</span><span class="va">y</span><span class="op">)</span></span>
-<span>   <span class="va">image.i.subset</span> <span class="op">&lt;-</span> <span class="va">image.i</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"CD4+ T cell"</span><span class="op">)</span></span>
+<span>   <span class="va">image.i.subset</span> <span class="op">&lt;-</span> <span class="va">image.i</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">type</span> <span class="op">==</span> <span class="st">"a"</span><span class="op">)</span></span>
 <span>   <span class="va">image.ppp</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/as.ppp.html" class="external-link">as.ppp</a></span><span class="op">(</span><span class="va">image.i.subset</span>, W <span class="op">=</span> <span class="va">w</span><span class="op">)</span></span>
 <span>   <span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/marks.html" class="external-link">marks</a></span><span class="op">(</span><span class="va">image.ppp</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="va">image.i.subset</span><span class="op">$</span><span class="va">type</span></span>
 <span></span>
@@ -273,37 +287,26 @@ run.</p>
 <span>   <span class="va">area.i</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/area.owin.html" class="external-link">area</a></span><span class="op">(</span><span class="va">image.ppp</span><span class="op">)</span></span>
 <span>  </span>
 <span>   <span class="co"># Save the results</span></span>
-<span>   <span class="va">results</span><span class="op">[</span><span class="va">results</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,<span class="op">]</span><span class="op">$</span><span class="va">spatial</span> <span class="op">&lt;-</span> <span class="va">Ki</span><span class="op">$</span><span class="va">iso</span><span class="op">[</span><span class="va">r</span><span class="op">+</span><span class="fl">1</span><span class="op">]</span></span>
-<span>   <span class="va">results</span><span class="op">[</span><span class="va">results</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,<span class="op">]</span><span class="op">$</span><span class="va">npoints</span> <span class="op">&lt;-</span> <span class="va">npoints.i</span></span>
-<span>   <span class="va">results</span><span class="op">[</span><span class="va">results</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,<span class="op">]</span><span class="op">$</span><span class="va">area</span> <span class="op">&lt;-</span> <span class="va">area.i</span></span>
+<span>   <span class="va">cell.a.results</span><span class="op">[</span><span class="va">cell.a.results</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,<span class="op">]</span><span class="op">$</span><span class="va">spatial</span> <span class="op">&lt;-</span> <span class="va">Ki</span><span class="op">$</span><span class="va">iso</span><span class="op">[</span><span class="va">r</span><span class="op">+</span><span class="fl">1</span><span class="op">]</span></span>
+<span>   <span class="va">cell.a.results</span><span class="op">[</span><span class="va">cell.a.results</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,<span class="op">]</span><span class="op">$</span><span class="va">npoints</span> <span class="op">&lt;-</span> <span class="va">npoints.i</span></span>
+<span>   <span class="va">cell.a.results</span><span class="op">[</span><span class="va">cell.a.results</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,<span class="op">]</span><span class="op">$</span><span class="va">area</span> <span class="op">&lt;-</span> <span class="va">area.i</span></span>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="co"># View the first few rows</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">results</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 6 × 5</span></span></span>
-<span><span class="co">#&gt;   PID           id                                  spatial npoints    area</span></span>
-<span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>                                 <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;int&gt;</span>   <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> #01 0-889-121 #01 0-889-121 P44_[40864,18015].im3      0        2 <span style="text-decoration: underline;">301</span>361.</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> #01 0-889-121 #01 0-889-121 P44_[42689,19214].im3  <span style="text-decoration: underline;">47</span>576.       4 <span style="text-decoration: underline;">285</span>454.</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">3</span> #01 0-889-121 #01 0-889-121 P44_[42806,16718].im3      0        3 <span style="text-decoration: underline;">332</span>974.</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">4</span> #01 0-889-121 #01 0-889-121 P44_[44311,17766].im3      0        5 <span style="text-decoration: underline;">333</span>936.</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">5</span> #01 0-889-121 #01 0-889-121 P44_[45366,16647].im3  <span style="text-decoration: underline;">27</span>781.       9 <span style="text-decoration: underline;">333</span>376.</span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">6</span> #02 1-037-393 #02 1-037-393 P44_[56576,16907].im3    <span style="color: #BB0000;">NaN</span>        0  <span style="text-decoration: underline;">52</span>210.</span></span></code></pre></div>
-<p>Some of the Ripley’s K estimates will be <code>NaN</code>s because
-there the corresponding image only contained
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>0</mn><annotation encoding="application/x-tex">0</annotation></semantics></math>
-or
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mn>1</mn><annotation encoding="application/x-tex">1</annotation></semantics></math>
-CD4+ T cell. We will remove these ROIs from our analysis.</p>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cell.a.results</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   PID            id  spatial npoints     area</span></span>
+<span><span class="co">#&gt; 1   1 PID.1.image.1 702.0332     126 9024.439</span></span>
+<span><span class="co">#&gt; 2   1 PID.1.image.2 314.6653     510 9841.915</span></span>
+<span><span class="co">#&gt; 3   1 PID.1.image.3 622.4667     155 7771.314</span></span>
+<span><span class="co">#&gt; 4   1 PID.1.image.4 636.2567     110 5619.839</span></span>
+<span><span class="co">#&gt; 5   1 PID.1.image.5 525.6607     107 5185.108</span></span>
+<span><span class="co">#&gt; 6   2 PID.2.image.1 632.7371     127 6941.758</span></span></code></pre></div>
 <p>We can now visualize the distribution of the spatial summaries within
 each image as an illustration of the variation in spatial distribution
-of CD4+ T cells across ROIs.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Remove NAs</span></span>
-<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="va">results</span><span class="op">[</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">results</span><span class="op">$</span><span class="va">spatial</span><span class="op">)</span>,<span class="op">]</span></span>
-<span></span>
-<span><span class="co"># Visualize the distribution of spatial summaries within each sample</span></span>
-<span><span class="va">results</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+of cells of type <code>a</code> across ROIs.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Visualize the distribution of spatial summaries within each sample</span></span>
+<span><span class="va">cell.a.results</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>PID <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">PID</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">PID</span>, y <span class="op">=</span> <span class="va">spatial</span>, group <span class="op">=</span> <span class="va">PID</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span> </span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_boxplot.html" class="external-link">geom_boxplot</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
@@ -312,15 +315,15 @@ of CD4+ T cells across ROIs.</p>
 <span>         axis.ticks.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Ripley's K statistics for ROIs within a each sample"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ylab</a></span><span class="op">(</span><span class="st">"Kest"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spagg_files/figure-html/remove%20NAs%20and%20plot-1.png" width="1440" style="display: block; margin: auto;"></p>
+<p><img src="spagg_files/figure-html/plot%20for%20univariate%20analysis-1.png" width="768" style="display: block; margin: auto;"></p>
 <p>After that, we will compute the weighted averages given above. We
 will also compute a standard arithmetic mean as a comparison. Below, we
 visualize the spread of the various spatial aggregation methods within
 each sample. For some samples, the averages yield similar values. For
 others, their values show large variation.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Compute averages</span></span>
-<span><span class="va">results_mean</span> <span class="op">&lt;-</span> <span class="va">results</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span><span class="va">cell.a.results_mean</span> <span class="op">&lt;-</span> <span class="va">cell.a.results</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">PID</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise_all.html" class="external-link">summarise_at</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/vars.html" class="external-link">vars</a></span><span class="op">(</span><span class="va">spatial</span><span class="op">)</span>,</span>
 <span>                        <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">.x</span><span class="op">)</span>, </span>
@@ -329,59 +332,159 @@ others, their values show large variation.</p>
 <span>                             <span class="op">~</span><span class="fu"><a href="../reference/baddeley.avg.html">baddeley.avg</a></span><span class="op">(</span>K.vec <span class="op">=</span> <span class="va">.x</span>, n.vec <span class="op">=</span> <span class="va">npoints</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Plot the averages</span></span>
-<span><span class="va">results_mean</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span><span class="va">cell.a.results_mean</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">tidyr</span><span class="fu">::</span><span class="fu"><a href="https://tidyr.tidyverse.org/reference/pivot_longer.html" class="external-link">pivot_longer</a></span><span class="op">(</span><span class="fl">2</span><span class="op">:</span><span class="fl">5</span>, names_to <span class="op">=</span> <span class="st">"mean"</span>, values_to <span class="op">=</span> <span class="st">"value"</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/recode.html" class="external-link">recode</a></span><span class="op">(</span><span class="va">mean</span>, </span>
 <span>                              <span class="st">"mean"</span> <span class="op">=</span> <span class="st">"Arithmetic Mean"</span>,</span>
 <span>                              <span class="st">"landau.avg"</span> <span class="op">=</span> <span class="st">"Landau Mean"</span>,</span>
 <span>                              <span class="st">"diggle.avg"</span> <span class="op">=</span> <span class="st">"Diggle Mean"</span>,</span>
 <span>                              <span class="st">"baddeley.avg"</span> <span class="op">=</span> <span class="st">"Baddeley Mean"</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>PID <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">PID</span><span class="op">)</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggplot.html" class="external-link">ggplot</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/aes.html" class="external-link">aes</a></span><span class="op">(</span>x <span class="op">=</span> <span class="va">PID</span>, y <span class="op">=</span> <span class="va">value</span>, group <span class="op">=</span> <span class="va">mean</span>, color <span class="op">=</span> <span class="va">mean</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/geom_point.html" class="external-link">geom_point</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/ggtheme.html" class="external-link">theme_bw</a></span><span class="op">(</span><span class="op">)</span> <span class="op">+</span></span>
-<span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/theme.html" class="external-link">theme</a></span><span class="op">(</span>axis.text.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span>,  </span>
-<span>        axis.ticks.x <span class="op">=</span> <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/element.html" class="external-link">element_blank</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ylab</a></span><span class="op">(</span><span class="st">"Average Kest"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">ggtitle</a></span><span class="op">(</span><span class="st">"Averaged Ripley's K within each sample"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/scale_colour_discrete.html" class="external-link">scale_color_discrete</a></span><span class="op">(</span>name <span class="op">=</span> <span class="st">"Aggregation Method"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="spagg_files/figure-html/averages-1.png" width="1440" style="display: block; margin: auto;"></p>
+<p><img src="spagg_files/figure-html/averages%20for%20univariate%20analysis-1.png" width="768" style="display: block; margin: auto;"></p>
 <p>We now have a data.frame with a column corresponding to each average.
-Let’s add in the MHCII-high status variable so we can do association
-testing. We would like to test if the spatial arrangement of CD4+ T
-cells is associated with MHCII-high status. We will compare the
-significance of this association across the four spatial aggregation
-methods.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+We can add in the outcome variable, <code>out</code>, so we can do
+association testing with the aggregated Ripley’s K statistics. We would
+like to compare if the aggregated Ripley’s K statistics are equal
+between cases (<code>out=1</code>) and controls (<code>out=0</code>). In
+other words, we would like to test if the <code>average</code> spatial
+distribution of cells across ROIs is the same between these two
+groups.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># First, check the ordering matches</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">lung_df_tumor</span><span class="op">$</span><span class="va">PID</span><span class="op">)</span> <span class="op">==</span> <span class="va">results_mean</span><span class="op">$</span><span class="va">PID</span><span class="op">)</span> <span class="co"># TRUE!</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">simdata</span><span class="op">$</span><span class="va">PID</span><span class="op">)</span> <span class="op">==</span> <span class="va">cell.a.results_mean</span><span class="op">$</span><span class="va">PID</span><span class="op">)</span> <span class="co"># TRUE!</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span>
 <span></span>
-<span><span class="co"># Add in MHCII-high status</span></span>
-<span><span class="va">results_mean</span><span class="op">$</span><span class="va">mhcII_high</span> <span class="op">&lt;-</span> <span class="va">lung_df_tumor</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">PID</span>, <span class="va">mhcII_high</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span><span class="co"># Add in the outcome</span></span>
+<span><span class="va">cell.a.results_mean</span><span class="op">$</span><span class="va">out</span> <span class="op">&lt;-</span> <span class="va">simdata</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">PID</span>, <span class="va">out</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
-<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">mhcII_high</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Test for an association between CD4 T cell spatial distributions and MHCII-high status</span></span>
-<span><span class="va">mean.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">mhcII_high</span> <span class="op">~</span> <span class="va">mean</span>, data <span class="op">=</span> <span class="va">results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">diggle.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">mhcII_high</span> <span class="op">~</span> <span class="va">diggle.avg</span>, data <span class="op">=</span> <span class="va">results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">baddeley.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">mhcII_high</span> <span class="op">~</span> <span class="va">baddeley.avg</span>, data <span class="op">=</span> <span class="va">results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">landau.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">mhcII_high</span> <span class="op">~</span> <span class="va">landau.avg</span>, data <span class="op">=</span> <span class="va">results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">mean.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">out</span> <span class="op">~</span> <span class="va">mean</span>, data <span class="op">=</span> <span class="va">cell.a.results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">diggle.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">out</span> <span class="op">~</span> <span class="va">diggle.avg</span>, data <span class="op">=</span> <span class="va">cell.a.results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">baddeley.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">out</span> <span class="op">~</span> <span class="va">baddeley.avg</span>, data <span class="op">=</span> <span class="va">cell.a.results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">landau.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">out</span> <span class="op">~</span> <span class="va">landau.avg</span>, data <span class="op">=</span> <span class="va">cell.a.results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># P-values from each approach</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mean.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span></span>
-<span><span class="co">#&gt; [1] 0.2591465</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">diggle.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span></span>
-<span><span class="co">#&gt; [1] 0.3146754</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">baddeley.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span></span>
-<span><span class="co">#&gt; [1] 0.3192316</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">landau.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span></span>
-<span><span class="co">#&gt; [1] 0.3509682</span></span></code></pre></div>
-<p>We did not find any significant associations between the spatial
-distribution of CD4 T cells as estimated by Ripley’s K and MHCII-high
-status at a radius of
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>30</mn></mrow><annotation encoding="application/x-tex">r=30</annotation></semantics></math>.</p>
+<span><span class="co"># Save the p-values in a table and display</span></span>
+<span><span class="va">cell.a.pvals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  Method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Mean"</span>, <span class="st">"Diggle"</span>, <span class="st">"Baddeley"</span>, <span class="st">"Landau"</span><span class="op">)</span>,</span>
+<span>  P.Value <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mean.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">diggle.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span>, </span>
+<span>              <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">baddeley.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">landau.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Show the results</span></span>
+<span><span class="va">cell.a.pvals</span></span>
+<span><span class="co">#&gt;     Method   P.Value</span></span>
+<span><span class="co">#&gt; 1     Mean 0.3149157</span></span>
+<span><span class="co">#&gt; 2   Diggle 0.5042833</span></span>
+<span><span class="co">#&gt; 3 Baddeley 0.5538728</span></span>
+<span><span class="co">#&gt; 4   Landau 0.7870703</span></span></code></pre></div>
+<p>We also consider a bivariate analysis where we examine the bivariate
+colocalization of cell types <code>a</code> and <code>b</code>. We
+follow a similar series of steps, but instead use the
+<code>Kcross</code> function to characterize the colocalization of these
+cell types.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Set the radius</span></span>
+<span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fl">10</span></span>
+<span></span>
+<span><span class="co"># Initialize a data.frame to store the results for each ROI</span></span>
+<span><span class="va">cell.ab.results</span> <span class="op">&lt;-</span> <span class="va">simdata</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">PID</span>, <span class="va">id</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>spatial <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>                npoints <span class="op">=</span> <span class="cn">NA</span>,</span>
+<span>                area <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span></span>
+<span> </span>
+<span><span class="co"># Iterate through the ROIs (this will take a few seconds)</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">ids</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  </span>
+<span> <span class="co"># Save the ith image</span></span>
+<span> <span class="va">image.i</span> <span class="op">&lt;-</span> <span class="va">simdata</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>   <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">x</span>, <span class="va">y</span>, <span class="va">type</span><span class="op">)</span></span>
+<span></span>
+<span>   <span class="co"># Convert to a point process object</span></span>
+<span>   <span class="va">w</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/convexhull.xy.html" class="external-link">convexhull.xy</a></span><span class="op">(</span><span class="va">image.i</span><span class="op">$</span><span class="va">x</span>, <span class="va">image.i</span><span class="op">$</span><span class="va">y</span><span class="op">)</span></span>
+<span>   <span class="va">image.ppp</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/as.ppp.html" class="external-link">as.ppp</a></span><span class="op">(</span><span class="va">image.i</span>, W <span class="op">=</span> <span class="va">w</span><span class="op">)</span></span>
+<span>   <span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/marks.html" class="external-link">marks</a></span><span class="op">(</span><span class="va">image.ppp</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">image.i</span><span class="op">$</span><span class="va">type</span><span class="op">)</span></span>
+<span></span>
+<span>   <span class="co"># Compute Kest</span></span>
+<span>   <span class="va">Ki</span> <span class="op">&lt;-</span> <span class="fu">spatstat.explore</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.explore/man/Kcross.html" class="external-link">Kcross</a></span><span class="op">(</span><span class="va">image.ppp</span>, i <span class="op">=</span> <span class="st">"a"</span>, j <span class="op">=</span> <span class="st">"b"</span>, r <span class="op">=</span> <span class="fl">0</span><span class="op">:</span><span class="va">r</span><span class="op">)</span></span>
+<span>  </span>
+<span>   <span class="co"># Calculate the number of points</span></span>
+<span>   <span class="va">npoints.i</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/npoints.html" class="external-link">npoints</a></span><span class="op">(</span><span class="va">image.ppp</span><span class="op">)</span></span>
+<span>   </span>
+<span>   <span class="co"># Calculate the area</span></span>
+<span>   <span class="va">area.i</span> <span class="op">&lt;-</span> <span class="fu">spatstat.geom</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/spatstat.geom/man/area.owin.html" class="external-link">area</a></span><span class="op">(</span><span class="va">image.ppp</span><span class="op">)</span></span>
+<span>  </span>
+<span>   <span class="co"># Save the results</span></span>
+<span>   <span class="va">cell.ab.results</span><span class="op">[</span><span class="va">cell.ab.results</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,<span class="op">]</span><span class="op">$</span><span class="va">spatial</span> <span class="op">&lt;-</span> <span class="va">Ki</span><span class="op">$</span><span class="va">iso</span><span class="op">[</span><span class="va">r</span><span class="op">+</span><span class="fl">1</span><span class="op">]</span></span>
+<span>   <span class="va">cell.ab.results</span><span class="op">[</span><span class="va">cell.ab.results</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,<span class="op">]</span><span class="op">$</span><span class="va">npoints</span> <span class="op">&lt;-</span> <span class="va">npoints.i</span></span>
+<span>   <span class="va">cell.ab.results</span><span class="op">[</span><span class="va">cell.ab.results</span><span class="op">$</span><span class="va">id</span> <span class="op">==</span> <span class="va">ids</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>,<span class="op">]</span><span class="op">$</span><span class="va">area</span> <span class="op">&lt;-</span> <span class="va">area.i</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># View the first few rows</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">cell.ab.results</span><span class="op">)</span></span>
+<span><span class="co">#&gt;   PID            id  spatial npoints     area</span></span>
+<span><span class="co">#&gt; 1   1 PID.1.image.1 654.1854     243 9024.439</span></span>
+<span><span class="co">#&gt; 2   1 PID.1.image.2 319.1038     959 9841.915</span></span>
+<span><span class="co">#&gt; 3   1 PID.1.image.3 658.9129     329 7771.314</span></span>
+<span><span class="co">#&gt; 4   1 PID.1.image.4 607.2475     194 5619.839</span></span>
+<span><span class="co">#&gt; 5   1 PID.1.image.5 504.2842     230 5185.108</span></span>
+<span><span class="co">#&gt; 6   2 PID.2.image.1 624.4899     251 6941.758</span></span></code></pre></div>
+<p>Following the same steps as above, we will compute the averages
+within each <code>PID</code> and test for an association with the
+outcome.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Compute averages</span></span>
+<span><span class="va">cell.ab.results_mean</span> <span class="op">&lt;-</span> <span class="va">cell.ab.results</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">PID</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>    <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise_all.html" class="external-link">summarise_at</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/vars.html" class="external-link">vars</a></span><span class="op">(</span><span class="va">spatial</span><span class="op">)</span>,</span>
+<span>                        <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">~</span><span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">.x</span><span class="op">)</span>, </span>
+<span>                             <span class="op">~</span><span class="fu"><a href="../reference/landau.avg.html">landau.avg</a></span><span class="op">(</span>K.vec <span class="op">=</span> <span class="va">.x</span>, area.vec <span class="op">=</span> <span class="va">area</span>, n.vec <span class="op">=</span> <span class="va">npoints</span><span class="op">)</span>,</span>
+<span>                             <span class="op">~</span><span class="fu"><a href="../reference/diggle.avg.html">diggle.avg</a></span><span class="op">(</span>K.vec <span class="op">=</span> <span class="va">.x</span>, n.vec <span class="op">=</span> <span class="va">npoints</span><span class="op">)</span>,</span>
+<span>                             <span class="op">~</span><span class="fu"><a href="../reference/baddeley.avg.html">baddeley.avg</a></span><span class="op">(</span>K.vec <span class="op">=</span> <span class="va">.x</span>, n.vec <span class="op">=</span> <span class="va">npoints</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># First, check the ordering matches</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/all.html" class="external-link">all</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">simdata</span><span class="op">$</span><span class="va">PID</span><span class="op">)</span> <span class="op">==</span> <span class="va">cell.ab.results_mean</span><span class="op">$</span><span class="va">PID</span><span class="op">)</span> <span class="co"># TRUE!</span></span>
+<span><span class="co">#&gt; [1] TRUE</span></span>
+<span></span>
+<span><span class="co"># Add in the outcome</span></span>
+<span><span class="va">cell.ab.results_mean</span><span class="op">$</span><span class="va">out</span> <span class="op">&lt;-</span> <span class="va">simdata</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> </span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">PID</span>, <span class="va">out</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">out</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Test for an association between CD4 T cell spatial distributions and MHCII-high status</span></span>
+<span><span class="va">mean.ab.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">out</span> <span class="op">~</span> <span class="va">mean</span>, data <span class="op">=</span> <span class="va">cell.ab.results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">diggle.ab.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">out</span> <span class="op">~</span> <span class="va">diggle.avg</span>, data <span class="op">=</span> <span class="va">cell.ab.results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">baddeley.ab.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">out</span> <span class="op">~</span> <span class="va">baddeley.avg</span>, data <span class="op">=</span> <span class="va">cell.ab.results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">landau.ab.glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/glm.html" class="external-link">glm</a></span><span class="op">(</span><span class="va">out</span> <span class="op">~</span> <span class="va">landau.avg</span>, data <span class="op">=</span> <span class="va">cell.ab.results_mean</span>, family <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">binomial</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Save the p-values in a table and display</span></span>
+<span><span class="va">cell.ab.pvals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  Method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Mean"</span>, <span class="st">"Diggle"</span>, <span class="st">"Baddeley"</span>, <span class="st">"Landau"</span><span class="op">)</span>,</span>
+<span>  P.Value <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">mean.ab.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">diggle.ab.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span>, </span>
+<span>              <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">baddeley.ab.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span>, <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">baddeley.ab.glm</span><span class="op">)</span><span class="op">$</span><span class="va">coef</span><span class="op">[</span><span class="fl">2</span>,<span class="fl">4</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Show the results</span></span>
+<span><span class="va">cell.ab.pvals</span></span>
+<span><span class="co">#&gt;     Method   P.Value</span></span>
+<span><span class="co">#&gt; 1     Mean 0.3954213</span></span>
+<span><span class="co">#&gt; 2   Diggle 0.4954686</span></span>
+<span><span class="co">#&gt; 3 Baddeley 0.5378123</span></span>
+<span><span class="co">#&gt; 4   Landau 0.5378123</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="ensemble-approaches">Ensemble Approaches<a class="anchor" aria-label="anchor" href="#ensemble-approaches"></a>
@@ -392,7 +495,7 @@ construct the aggregations of the spatial summary statistics. For each
 set of random weights, we test for an association between the weighted
 aggregation and outcome. We repeat this for many random weights and
 combine the resulting p-values using a p-value combination method. For
-this purpose, we use the Cauchy combination test <span class="citation">Liu and Xie (2020)</span>.</p>
+this purpose, we use the Cauchy combination test <span class="citation">@liu2020cauchy</span>.</p>
 <p>The motivation behind these ensemble approaches is that the best set
 of weights (the weights that will yield the highest power) is generally
 unknown at the outset. For this reason, considering many different
@@ -424,71 +527,87 @@ times and the resulting p-values are combined using the Cauchy
 combination test. This approach is contained in the
 <code>combo.weight.avg</code> function.</p></li>
 </ul>
-<p>We now run each of these approaches to testing using the
-<code>results</code> data.frame we constructed above.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<p>We now run each of these approaches to testing for the univariate
+analysis using the <code>cell.a.results</code> data.frame we constructed
+above.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Add the outcome back into the data</span></span>
-<span><span class="va">results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">results</span>, </span>
-<span>                     <span class="va">lung_df_tumor</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, <span class="va">PID</span>, <span class="va">mhcII_high</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span><span class="va">cell.a.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">cell.a.results</span>, </span>
+<span>                     <span class="va">simdata</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, <span class="va">PID</span>, <span class="va">out</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="op">)</span>, </span>
 <span>                     by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"PID"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Run each ensemble test</span></span>
-<span><span class="va">ensemble.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ensemble.avg.html">ensemble.avg</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">results</span>, group <span class="op">=</span> <span class="st">"PID"</span>, </span>
-<span>                             outcome <span class="op">=</span> <span class="st">"mhcII_high"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span>
+<span><span class="va">ensemble.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ensemble.avg.html">ensemble.avg</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cell.a.results</span>, group <span class="op">=</span> <span class="st">"PID"</span>, </span>
+<span>                             outcome <span class="op">=</span> <span class="st">"out"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">resample.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/resampling.avg.html">resampling.avg</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">results</span>, group <span class="op">=</span> <span class="st">"PID"</span>, </span>
-<span>                               outcome <span class="op">=</span> <span class="st">"mhcII_high"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span>
+<span><span class="va">resample.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/resampling.avg.html">resampling.avg</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cell.a.results</span>, group <span class="op">=</span> <span class="st">"PID"</span>, </span>
+<span>                               outcome <span class="op">=</span> <span class="st">"out"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">combo.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/combo.weight.avg.html">combo.weight.avg</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">results</span>, group <span class="op">=</span> <span class="st">"PID"</span>, </span>
-<span>                              outcome <span class="op">=</span> <span class="st">"mhcII_high"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span>
+<span><span class="va">combo.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/combo.weight.avg.html">combo.weight.avg</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cell.a.results</span>, group <span class="op">=</span> <span class="st">"PID"</span>, </span>
+<span>                              outcome <span class="op">=</span> <span class="st">"out"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># P-values</span></span>
-<span><span class="va">ensemble.res</span><span class="op">$</span><span class="va">pval</span></span>
-<span><span class="co">#&gt; [1] 0.3749332</span></span>
-<span><span class="va">resample.res</span><span class="op">$</span><span class="va">pval</span></span>
-<span><span class="co">#&gt; [1] 0.5085036</span></span>
-<span><span class="va">combo.res</span><span class="op">$</span><span class="va">pval</span></span>
-<span><span class="co">#&gt; [1] 0.4716415</span></span></code></pre></div>
-<p>The ensemble p-values also show no significance in the association
-between the spatial clustering of CD4+ T cells and MHCII-high status
-among tumor samples. This</p>
+<span><span class="co"># Add the p-values to the results above</span></span>
+<span><span class="va">cell.a.pvals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind.data.frame</a></span><span class="op">(</span></span>
+<span>  <span class="va">cell.a.pvals</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    Method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Ensemble"</span>, <span class="st">"Resampling"</span>, <span class="st">"Combo"</span><span class="op">)</span>,</span>
+<span>    P.Value <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">ensemble.res</span><span class="op">$</span><span class="va">pval</span>, <span class="va">resample.res</span><span class="op">$</span><span class="va">pval</span>, <span class="va">combo.res</span><span class="op">$</span><span class="va">pval</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Print the results</span></span>
+<span><span class="va">cell.a.pvals</span></span>
+<span><span class="co">#&gt;       Method   P.Value</span></span>
+<span><span class="co">#&gt; 1       Mean 0.3149157</span></span>
+<span><span class="co">#&gt; 2     Diggle 0.5042833</span></span>
+<span><span class="co">#&gt; 3   Baddeley 0.5538728</span></span>
+<span><span class="co">#&gt; 4     Landau 0.7870703</span></span>
+<span><span class="co">#&gt; 5   Ensemble 0.3251936</span></span>
+<span><span class="co">#&gt; 6 Resampling 0.9309895</span></span>
+<span><span class="co">#&gt; 7      Combo 0.8380127</span></span></code></pre></div>
+<p>We can also perform ensemble testing for the bivariate case. We show
+how to do this below using the <code>cell.ab.results</code> object.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Add the outcome back into the data</span></span>
+<span><span class="va">cell.ab.results</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">cell.ab.results</span>, </span>
+<span>                     <span class="va">simdata</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">id</span>, <span class="va">PID</span>, <span class="va">out</span><span class="op">)</span> <span class="op"><a href="../reference/pipe.html">%&gt;%</a></span> <span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="op">)</span>, </span>
+<span>                     by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"id"</span>, <span class="st">"PID"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Run each ensemble test</span></span>
+<span><span class="va">ensemble.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/ensemble.avg.html">ensemble.avg</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cell.ab.results</span>, group <span class="op">=</span> <span class="st">"PID"</span>, </span>
+<span>                             outcome <span class="op">=</span> <span class="st">"out"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">resample.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/resampling.avg.html">resampling.avg</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cell.ab.results</span>, group <span class="op">=</span> <span class="st">"PID"</span>, </span>
+<span>                               outcome <span class="op">=</span> <span class="st">"out"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">combo.res</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/combo.weight.avg.html">combo.weight.avg</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">cell.ab.results</span>, group <span class="op">=</span> <span class="st">"PID"</span>, </span>
+<span>                              outcome <span class="op">=</span> <span class="st">"out"</span>, model <span class="op">=</span> <span class="st">"logistic"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Add the p-values to the results above</span></span>
+<span><span class="va">cell.ab.pvals</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">rbind.data.frame</a></span><span class="op">(</span></span>
+<span>  <span class="va">cell.ab.pvals</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>    Method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Ensemble"</span>, <span class="st">"Resampling"</span>, <span class="st">"Combo"</span><span class="op">)</span>,</span>
+<span>    P.Value <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">ensemble.res</span><span class="op">$</span><span class="va">pval</span>, <span class="va">resample.res</span><span class="op">$</span><span class="va">pval</span>, <span class="va">combo.res</span><span class="op">$</span><span class="va">pval</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Print the results</span></span>
+<span><span class="va">cell.ab.pvals</span></span>
+<span><span class="co">#&gt;       Method   P.Value</span></span>
+<span><span class="co">#&gt; 1       Mean 0.3954213</span></span>
+<span><span class="co">#&gt; 2     Diggle 0.4954686</span></span>
+<span><span class="co">#&gt; 3   Baddeley 0.5378123</span></span>
+<span><span class="co">#&gt; 4     Landau 0.5378123</span></span>
+<span><span class="co">#&gt; 5   Ensemble 0.4322548</span></span>
+<span><span class="co">#&gt; 6 Resampling 0.8006880</span></span>
+<span><span class="co">#&gt; 7      Combo 0.8496178</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
 </h2>
-<div id="refs" class="references csl-bib-body hanging-indent" entry-spacing="0">
-<div id="ref-baddeley1993analysis" class="csl-entry">
-Baddeley, AJ, RA Moyeed, CV Howard, and A Boyde. 1993. <span>“Analysis
-of a Three-Dimensional Point Pattern with Replication.”</span>
-<em>Journal of the Royal Statistical Society: Series C (Applied
-Statistics)</em> 42 (4): 641–68.
-</div>
-<div id="ref-diggle1991analysis" class="csl-entry">
-Diggle, Peter J, Nicholas Lange, and Francine M Beneš. 1991.
-<span>“Analysis of Variance for Replicated Spatial Point Patterns in
-Clinical Neuroanatomy.”</span> <em>Journal of the American Statistical
-Association</em> 86 (415): 618–25.
-</div>
-<div id="ref-johnson2021cancer" class="csl-entry">
-Johnson, Amber M, Jennifer M Boland, Julia Wrobel, Emily K Klezcko, Mary
-Weiser-Evans, Katharina Hopp, Lynn Heasley, et al. 2021. <span>“Cancer
-Cell-Specific Major Histocompatibility Complex II Expression as a
-Determinant of the Immune Infiltrate Organization and Function in the
-NSCLC Tumor Microenvironment.”</span> <em>Journal of Thoracic
-Oncology</em> 16 (10): 1694–704.
-</div>
-<div id="ref-landau2004nonparametric" class="csl-entry">
-Landau, Sabine, Sophia Rabe-Hesketh, and Ian P Everall. 2004.
-<span>“Nonparametric One-Way Analysis of Variance of Replicated
-Bivariate Spatial Point Patterns.”</span> <em>Biometrical Journal:
-Journal of Mathematical Methods in Biosciences</em> 46 (1): 19–34.
-</div>
-<div id="ref-liu2020cauchy" class="csl-entry">
-Liu, Yaowu, and Jun Xie. 2020. <span>“Cauchy Combination Test: A
-Powerful Test with Analytic p-Value Calculation Under Arbitrary
-Dependency Structures.”</span> <em>Journal of the American Statistical
-Association</em> 115 (529): 393–402.
-</div>
+<div id="refs">
+
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
