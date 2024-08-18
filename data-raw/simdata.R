@@ -26,6 +26,13 @@ n.image.per.PID <- sample(x = 1:5, size = n, replace = TRUE)
 # Iterate through the PIDs
 for (i in 1:n) {
 
+  # Simulate the outcome
+  if (i <= 10) {
+    out <- rbinom(1, size = 1, p = 0.75)
+  } else {
+    out <- rbinom(1, size = 1, p = 0.25)
+  }
+
   # Iterate through the images
   for (j in 1:n.image.per.PID[i]) {
 
@@ -66,12 +73,9 @@ for (i in 1:n) {
     image.ij$type<- sample(c("a", "b"), xy$n, replace = TRUE)
 
     # Save the outcome
-    if (i <= 10) {
-      image.ij$out <- rbinom(1, size = 1, p = 0.75)
-    } else {
-      image.ij$out <- rbinom(1, size = 1, p = 0.25)
-    }
+    image.ij$out <- out
 
+    # Add in the image information
     simdata <- rbind.data.frame(simdata, image.ij)
   }
 }
