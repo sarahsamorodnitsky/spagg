@@ -5,6 +5,7 @@ vignette: >
   %\VignetteIndexEntry{test}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+bibliography: bibliography.bib
 ---
 
 ```{r, include = FALSE}
@@ -25,10 +26,12 @@ The motivation behind `spagg` is that analyses of data from multiplexed immunofl
 
 This vignette will use simulated spatial point pattern data. To see how this data was generated, please see `spagg > data-raw > simdata.R`.
 
+## Loading in the Data and Plotting
+
 We start by loading in the `spagg` package and our simulated data. We show the first few lines of the dataset below. The dataset is organized so as to mimic the structure of single-cell, spatial images produced by multiplexed immunofluorescence and spatial proteomics platforms. Each row corresponds to a detected cell, which is enumerated by the `cell.id` column. The cells are grouped together by samples, denoted by the `PID` column and by images within those samples, denoted by the `id` column. The `x` and `y` columns give the (x,y) coordinates of each cell. The `type` column denotes the cell type for the corresponding row. In this simulated dataset, the possible cell types are `a` and `b`. Finally, the `out` column gives the sample-level endpoint with which we are interested in performing associative analyses. In this simulated dataset, the `out` column is a binary `1` or `0` indicator. 
 
 ```{r setup}
-# Load in package
+# Load in packages
 library(spagg)
 library(ggplot2)
 library(cowplot)
@@ -40,7 +43,7 @@ data(simdata)
 head(simdata)
 ```
 
-We can also plot the images for `PID=1`. 
+We can plot the images for `PID=1`. This can be a helpful tool to visually assess variation in the spatial distribution of cells across ROIs. 
 
 ```{r view the data}
 # Plot the images for PID=1 --
@@ -71,13 +74,13 @@ cowplot::plot_grid(plot.list[[1]], plot.list[[2]],
 ```
 The above plots show simulated data, but illustrate a common challenge that arises in analyzing grouped point patterns reflecting multiple ROIs of a tissue sample: heterogeneity in the spatial clustering patterns. Each ROI shows a different clusterig pattern among the `a` and `b` cell types. 
 
-We are going to use the spatial summary statistic, Ripley's K, to characterize the degree of adherence to clustering, repulsion, or complete spatial randomness in each ROI. The `spagg` package the contains six approaches for handling multiple spatial summary statistics for associative analyses. Three of these approaches are weighted aggregations of the spatial summaries using fixed weights. The other three are ensemble approaches which generate random weights used to construct weighted aggregations. Within each ensemble replication, we test for an association between the weighted aggregation and the sample-level outcome. We then ensemble the resulting p-values for an omnibus test. 
+We are going to use the spatial summary statistic, Ripley's K, to characterize the degree of adherence to clustering, repulsion, or complete spatial randomness in each ROI. The `spagg` package the contains five approaches for handling multiple spatial summary statistics for associative analyses. Three of these approaches are weighted aggregations of the spatial summaries using fixed weights. The other two are ensemble approaches which generate random weights used to construct weighted aggregations. Within each ensemble replication, we test for an association between the weighted aggregation and the sample-level outcome. We then ensemble the resulting p-values for an omnibus test. 
 
 We first start by illustrating the weighted aggregations. 
 
 ## Weighted Aggregations
 
-We will first consider different approaches to averaging Ripely's K across ROIs within a sample. Let's start by defining some notation. Suppose for sample $i$ we have $R_i$ ROIs. Let $n_{ir}$ be the number of cells in sample $i$ ROI $r$. Let $A_{ir}$ represent the area of sample $i$ ROI $r$. Let $\hat K_{ir}$ represent the spatial distribution of CD4+ T cells evaluate at radius $30$. 
+We will first consider different approaches to averaging Ripely's K across ROIs within a sample. Let's start by defining some notation. Suppose for sample $i$ we have $R_i$ ROIs. Let $n_{ir}$ be the number of cells in sample $i$ ROI $r$. Let $A_{ir}$ represent the area of sample $i$ ROI $r$. Let $\hat K_{ir}$ represent the spatial distribution of cells evaluate at radius $r$. 
 
 `spagg` contains implementations for the following three weighted averages:
 
@@ -95,13 +98,13 @@ We will first consider different approaches to averaging Ripely's K across ROIs 
   \bar K_i^{Landau} = \frac{\sum_{r=1}^{R_i} A_{ir}}{\sum_{r=1}^{R_i} n_{ir}} \sum_{r=1}^{R_i} \frac{n^2_{ir}}{A_{ir}} \hat K_{ir} 
 \end{equation*}
 
-$\bar K_i^{Diggle}$ (@diggle1991analysis), $\bar K_i^{Baddeley}$ (@baddeley1993analysis), and $\bar K_i^{Landau}$ (@landau2004nonparametric) were each proposed as approaches to aggregating replicated Ripley's K statistics.  
+$\bar K_i^{Diggle}$ (@diggle1991analysis), $\bar K_i^{Baddeley}$ (@baddeley1993analysis), and $\bar K_i^{Landau}$ (@landau2004nonparametric) were each proposed as approaches to aggregating replicated Ripley's K statistics. The motivation behind each of these aggregations is to weight each Ripley's K statistic by its sampling variance. However, the sampling variance is generally difficult to write down explicitly for Ripley's K so each method relies on an approximation. The accuracy of the approximation relies on whether the intensity of the spatial point pattern (the ratio of the number of cells divided by the image area) is consistent or varied across ROIs. If the intensity is consistent, all methods should yield similar average Ripley's K statistics and, in turn, perform similarly-well for hypothesis testing. If the intensity is different across ROIs, and also informative in predicting the outcome, the Landau mean may perform better.  
 
-We first consider a univariate analysis where we consider only one cell type. We start with analyzing cell type `a` only and its associations with outcomes. We estimate Ripley's K for $r=10$ on each ROI. Note this may take several seconds (up to 30 seconds) to run. 
+We first consider a univariate analysis where we analyze only one cell type. We start with cell type `a` only and its associations with sample-level outcomes. We estimate Ripley's K for $r=30$ on each ROI. Note this may take several seconds (up to 30 seconds) to run. 
 
 ```{r Kest for univariate analysis}
 # Set the radius
-r <- 10
+r <- 30
 
 # Save the image IDs
 ids <- unique(simdata$id)
@@ -126,7 +129,7 @@ for (i in 1:length(ids)) {
    w <- spatstat.geom::convexhull.xy(image.i$x, image.i$y)
    image.i.subset <- image.i %>% dplyr::filter(type == "a")
    image.ppp <- spatstat.geom::as.ppp(image.i.subset, W = w)
-   marks(image.ppp) <- image.i.subset$type
+   spatstat.geom::marks(image.ppp) <- image.i.subset$type
 
    # Compute Kest
    Ki <- spatstat.explore::Kest(image.ppp, r = 0:r)
@@ -156,13 +159,14 @@ cell.a.results %>%
   ggplot(aes(x = PID, y = spatial, group = PID)) + 
   geom_boxplot() +
   theme_bw() +
-   theme(axis.text.x = element_blank(),  
-         axis.ticks.x = element_blank()) +
   ggtitle("Ripley's K statistics for ROIs within a each sample") +
   ylab("Kest")
 ```
 
-After that, we will compute the weighted averages given above. We will also compute a standard arithmetic mean as a comparison. Below, we visualize the spread of the various spatial aggregation methods within each sample. For some samples, the averages yield similar values. For others, their values show large variation. 
+As the above plot illustrates, there can be considerable variation in the spatial summary statistic values within a single sample. 
+
+After that, we will compute the weighted averages given above. We will also compute a standard arithmetic mean as a comparison. Below, we visualize the spread of the various spatial aggregation methods within each sample. For some samples, the averages yield similar values. For others, the averages exhibit large variation, suggesting they up- or down-weight certain ROIs depending on the area of the ROI or the number of cells. 
+
 ```{r averages for univariate analysis}
 # Compute averages
 cell.a.results_mean <- cell.a.results %>%
@@ -220,11 +224,54 @@ cell.a.pvals <- data.frame(
 cell.a.pvals
 ```
 
+Using a standard mean, the Diggle method, and the Baddeley approach, we found a significant association between the spatial distribution of cell type `a` and outcomes. We did not find this association, however, using the Landau mean. 
+
+To explore the varied performance of these methods a bit more, we can plot the intensity of cell type `a` within each ROI and examine the variation across samples, as shown below. There is considerable variation across samples and considerable variation within some samples. Samples 4 and 6, for example, show very little variation across ROIs. However, Sample 4 only had 1 image. Other samples, showed more variation, like Samples 1 and 2. The overall spread in variation, however, was only between 0.002 and 0.05. 
+
+```{r plotting intensity}
+# Calculate intensity for each ROI and plot
+cell.a.results %>%
+  dplyr::mutate(intensity = npoints/area) %>%
+  dplyr::mutate(PID = factor(PID)) %>%
+  ggplot(aes(x = PID, y = intensity, group = PID)) + 
+  geom_boxplot() +
+  theme_bw() +
+  ggtitle("Variation in Point Pattern Intensity Within Each Sample")
+
+# How many ROIs did each sample have?
+simdata %>% dplyr::select(PID, id) %>% dplyr::group_by(PID) %>% dplyr::summarise(n = n()) %>% head(10)
+
+# Calculate the range in intensity
+cell.a.results %>%
+  dplyr::mutate(intensity = npoints/area) %>%
+  dplyr::summarise(min.intensity = min(intensity),
+                   max.intensity = max(intensity))
+```
+We can also examine if the intensity differed between outcomes. Below we plot the intensities across ROIs and examine if this associates with case (`out=1`) or control (`out=0`) status. Below, we see that there was some variation in ROI intensity across outcomes. Nonetheless, the Landau mean still did not perform best. 
+
+```{r intensity vs. outcome}
+# Add in the outcome
+cell.a.results$out <- simdata %>%
+  dplyr::select(PID, id, out) %>%
+  dplyr::distinct() %>%
+  dplyr::select(out) %>%
+  unlist()
+
+# Plot
+cell.a.results %>%
+  dplyr::mutate(intensity = npoints/area) %>%
+  dplyr::mutate(out = factor(out)) %>%
+  ggplot(aes(x = out, y = intensity)) + 
+  geom_boxplot() +
+  theme_bw() +
+  ggtitle("Variation in Point Pattern Intensity Across Outcomes")
+```
+
 We also consider a bivariate analysis where we examine the bivariate colocalization of cell types `a` and `b`. We follow a similar series of steps, but instead use the `Kcross` function to characterize the colocalization of these cell types. 
 
 ```{r Kest for bivariate analysis}
 # Set the radius
-r <- 10
+r <- 30
 
 # Initialize a data.frame to store the results for each ROI
 cell.ab.results <- simdata %>% 
@@ -245,7 +292,7 @@ for (i in 1:length(ids)) {
    # Convert to a point process object
    w <- spatstat.geom::convexhull.xy(image.i$x, image.i$y)
    image.ppp <- spatstat.geom::as.ppp(image.i, W = w)
-   marks(image.ppp) <- factor(image.i$type)
+   spatstat.geom::marks(image.ppp) <- factor(image.i$type)
 
    # Compute Kest
    Ki <- spatstat.explore::Kcross(image.ppp, i = "a", j = "b", r = 0:r)
@@ -265,6 +312,7 @@ for (i in 1:length(ids)) {
 # View the first few rows
 head(cell.ab.results)
 ```
+
 Following the same steps as above, we will compute the averages within each `PID` and test for an association with the outcome. 
 
 ```{r averages for bivariate analysis}
@@ -304,21 +352,21 @@ cell.ab.pvals <- data.frame(
 cell.ab.pvals
 ```
 
+Here we found a significant association between the spatial colocalization of cell types `a` and `b` with outcomes using a standard arithmetic mean and using the Diggle mean but not using the Baddeley or Landau mean. 
+
 ## Ensemble Approaches
 
-We now illustrate using ensemble testing to test the same hypothesis. These ensemble approaches consider multiple random weights used to construct the aggregations of the spatial summary statistics. For each set of random weights, we test for an association between the weighted aggregation and outcome. We repeat this for many random weights and combine the resulting p-values using a p-value combination method. For this purpose, we use the Cauchy combination test @liu2020cauchy. 
+We now illustrate using ensemble testing to test the same hypothesis, whether the spatial distribution of cells is equal between cases (`out=1`) and controls (`out=0`). These ensemble approaches consider multiple random weights used to construct the aggregations of the spatial summary statistics. For each set of random weights, we test for an association between the weighted aggregation and outcome. We repeat this for many random weights and combine the resulting p-values using a p-value combination method. For this purpose, we use the Cauchy combination test (@liu2020cauchy). 
 
-The motivation behind these ensemble approaches is that the best set of weights (the weights that will yield the highest power) is generally unknown at the outset. For this reason, considering many different possible weights may gain us more power because we may capture the true relationship between the aggregated spatial summary statistics and sample-level outcome. 
+The motivation behind these ensemble approaches is that the best set of weights (the weights that will yield the highest power) is generally unknown at the outset. For this reason, considering many different possible weights may gain us more power because we may capture the true relationship between the aggregated spatial summary statistics and sample-level outcome through randomly simulating weights. 
 
-`spagg` contains implementations for three different approaches:
+`spagg` contains implementations for two different approaches:
 
-- Standard ensemble testing: in this approach, `spagg` randomly generates weights from a standard normal distribution which are used to construct a weighted mean of the Ripley's K estimates obtained from each ROI. This process is repeated many times. For each random set of weights, the association between the weighted mean spatial summary and sample-level outcomes is tested. The resulting p-values are combined using the Cauchy combination test. This approach is contained in the `ensemble.avg` function. 
+1. \textbf{Standard ensemble testing}: in this approach, `spagg` randomly generates weights from a standard normal distribution which are used to construct a weighted mean of the Ripley's K estimates obtained from each ROI. This process is repeated many times. For each random set of weights, the association between the weighted mean spatial summary and sample-level outcomes is tested. The resulting p-values are combined using the Cauchy combination test. This approach is contained in the `ensemble.avg` function. 
 
-- Resampling: in this approach, `spagg` randomly samples one spatial summary statisti per sample and tests for an association with the sample-level outcome. This process is repeated many times and the resulting p-values are combined using the Cauchy combination test. This approach is contained in the `resampling.avg` function. 
+2. \textbf{Combination testing}: in this approach, `spagg` randomly generates weights from a standard normal distribution and uses these weights as well as the number of cells in each ROI to construct a weighted mean of Ripley's K estimates. This process is repeated many times and the resulting p-values are combined using the Cauchy combination test. This approach is contained in the `combo.weight.avg` function. 
 
-- Combination testing: in this approach, `spagg` randomly generates weights from a standard normal distribution and uses these weights as well as the number of cells in each ROI to construct a weighted mean of Ripley's K estimates. This process is repeated many times and the resulting p-values are combined using the Cauchy combination test. This approach is contained in the `combo.weight.avg` function. 
-
-We now run each of these approaches to testing for the univariate analysis using the `cell.a.results` data.frame we constructed above. 
+We now run these approaches to testing for the univariate analysis using the `cell.a.results` data.frame we constructed above which contains the Ripley's K value at `r=30`.
 
 ```{r ensemble for the univariate analysis}
 # Add the outcome back into the data
@@ -330,9 +378,6 @@ cell.a.results <- left_join(cell.a.results,
 ensemble.res <- ensemble.avg(data = cell.a.results, group = "PID", 
                              outcome = "out", model = "logistic")
 
-resample.res <- resampling.avg(data = cell.a.results, group = "PID", 
-                               outcome = "out", model = "logistic")
-
 combo.res <- combo.weight.avg(data = cell.a.results, group = "PID", 
                               outcome = "out", model = "logistic")
 
@@ -340,14 +385,15 @@ combo.res <- combo.weight.avg(data = cell.a.results, group = "PID",
 cell.a.pvals <- rbind.data.frame(
   cell.a.pvals,
   data.frame(
-    Method = c("Ensemble", "Resampling", "Combo"),
-    P.Value = c(ensemble.res$pval, resample.res$pval, combo.res$pval)
+    Method = c("Ensemble", "Combo"),
+    P.Value = c(ensemble.res$pval, combo.res$pval)
   )
 )
 
 # Print the results
 cell.a.pvals
 ```
+Here, the mean and the ensemble approaches yielded the lowest p-values. The combo approach also yielded a low p-value. This suggests some concordance among the methods in detecting a significant association between the spatial distribution of cell type `a` and case/control status. 
 
 We can also perform ensemble testing for the bivariate case. We show how to do this below using the `cell.ab.results` object. 
 
@@ -361,9 +407,6 @@ cell.ab.results <- left_join(cell.ab.results,
 ensemble.res <- ensemble.avg(data = cell.ab.results, group = "PID", 
                              outcome = "out", model = "logistic")
 
-resample.res <- resampling.avg(data = cell.ab.results, group = "PID", 
-                               outcome = "out", model = "logistic")
-
 combo.res <- combo.weight.avg(data = cell.ab.results, group = "PID", 
                               outcome = "out", model = "logistic")
 
@@ -371,14 +414,16 @@ combo.res <- combo.weight.avg(data = cell.ab.results, group = "PID",
 cell.ab.pvals <- rbind.data.frame(
   cell.ab.pvals,
   data.frame(
-    Method = c("Ensemble", "Resampling", "Combo"),
-    P.Value = c(ensemble.res$pval, resample.res$pval, combo.res$pval)
+    Method = c("Ensemble", "Combo"),
+    P.Value = c(ensemble.res$pval, combo.res$pval)
   )
 )
 
 # Print the results
 cell.ab.pvals
 ```
+
+Here, the ensemble and combo approaches yielded low p-values, suggesting the spatial colocalization of cell types `a` and `b` is associated with the outcome. 
 
 # References
 
