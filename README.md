@@ -23,8 +23,8 @@ aggregating the spatial summary statistics for each ROI into a single value can 
 downstream association testing with clinical outcomes. 
 
 `spagg` provides several methods for aggregating spatial summary statistics. These include
-three weighted means (`diggle.avg`, `baddeley.avg`, and `landau.avg`) and three ensemble
-approaches (`ensemble.avg`, `resampling.avg`, `combo.weight.avg`). The weighted means aggregate
+three weighted means (`diggle.avg`, `baddeley.avg`, and `landau.avg`) and two ensemble
+approaches (`ensemble.avg` and`combo.weight.avg`). The weighted means aggregate
 the summary statistics using a weighted mean based on the number of cells in each ROI and/or the 
 area of each ROI. The ensemble approaches use random weights to construct an aggregation and combine the 
 resulting p-values across many randomly-generated weights for an ensemble test. 
