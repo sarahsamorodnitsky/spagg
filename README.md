@@ -49,7 +49,7 @@ devtools::install_github("sarahsamorodnitsky/spagg")
 
 `spagg` relies on several required dependencies: `ACAT`, `dplyr`, `magrittr`, the `spatstat` family of packages, `stats`, `survival`, and `tidyselect`. The `ACAT` package is currently in development on Github. To properly install `spagg`, the latest version of `devtools` is required to ensure it can install `ACAT` from Github. 
 
-In addition, `spagg` relies on several suggested packages to run the vignettes: `knitr`, `rmarkdown`, `ggplot2`, `tidyr`, `spatstat.utils`, `spatstat.univar`, and `SPOT`. 
+In addition, `spagg` relies on several suggested packages to run the vignettes: `knitr`, `rmarkdown`, `ggplot2`, `tidyr`, `spatstat.utils`, `spatstat.univar`, `cowplot`, and `SPOT`. `SPOT` is also available on Github, so the latest version of `devtools` is required. 
 
 ## Vignettes
 
