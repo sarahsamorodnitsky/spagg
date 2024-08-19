@@ -54,9 +54,11 @@ In addition, `spagg` relies on several suggested packages to run the vignettes: 
 ## Vignettes
 
 For example usage of `spagg` in single-cell spatial proteomics imaging
-analysis, please see the associated vignettes. The vignettes illustrate how
-to apply the weighted means and ensemble approaches in analyses of real multiplexed
-spatial proteomics datasets. 
+analysis, please see the associated vignettes. The `spagg` package contains three vignettes:
+
+1. `Getting Started`: this vignette illustrates how to use `spagg` for univariate or bivariate colocalization analyses on simulated data.
+2. `Analysis of a Non-Small Cell Lung Cancer Dataset`: this vignette illustrates how to use `spagg` to analyze a non-small cell lung cancer dataset.
+3. `Accommodating Multiple Radii`: this vignette illustrates how to incorporate multiple radii into a `spagg` analysis using the `SPOT` method.
 
 ## Bugs and Improvements
 
