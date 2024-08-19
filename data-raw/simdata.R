@@ -7,7 +7,7 @@ library(spatstat)
 set.seed(68490)
 
 # Fix parameters
-n <- 20 # Number of samples to generate
+n <- 30 # Number of samples to generate
 
 # Initialize data.frame to store samples
 simdata <- data.frame(
@@ -28,16 +28,16 @@ for (i in 1:n) {
 
   # Simulate the outcome
   if (i <= 10) {
-    out <- rbinom(1, size = 1, p = 0.75)
+    out <- rbinom(1, size = 1, p = 0.9)
   } else {
-    out <- rbinom(1, size = 1, p = 0.25)
+    out <- rbinom(1, size = 1, p = 0.1)
   }
 
   # Iterate through the images
   for (j in 1:n.image.per.PID[i]) {
 
-    # Randomly choose a point pattern to simulate
-    flip <- sample(0:1, 1)
+    # Randomly choose a point pattern
+    flip <- rbinom(1, size = 1, p = 0.9)
 
     # Generate a point pattern --
 
@@ -50,12 +50,12 @@ for (i in 1:n) {
     }
 
     # Clusters
-    if (flip == 1 & i <= 10) {
+    if (flip == 1 & out == 1) {
       xy <- spatstat.random::rMatClust(kappa = 0.001, scale = 10, mu = 25, win = window)
     }
 
     # Repulsed
-    if (flip == 1 & i > 10) {
+    if (flip == 1 & out == 0) {
       xy <- spatstat.random::rStrauss(beta = 0.01, gamma = 0, R = 5, W = window)
     }
 
