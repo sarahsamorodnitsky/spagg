@@ -65,20 +65,9 @@
 
     
     
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://sarahsamorodnitsky.github.io/spagg/">spagg</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">SPOT</span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://magrittr.tidyverse.org" class="external-link">magrittr</a></span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
-<span><span class="co">#&gt; The following objects are masked from 'package:stats':</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     filter, lag</span></span>
-<span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
-<span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
+<div class="section level2">
+<h2 id="introduction">Introduction<a class="anchor" aria-label="anchor" href="#introduction"></a>
+</h2>
 <p>To apply spatial summary statistics, like Ripley’s K, in analyses of
 multiplexed spatial proteomics imaging data, the user is required to
 select a radius in which to quantify the degree of clustering,
@@ -93,6 +82,26 @@ several candidate radii, aggregate the resulting spatial summary
 statistics for a given radius within a sample across regions-of-interest
 (ROIs), test for an association between the aggregated spatial summary
 and an outcome, and combine the results across radii.</p>
+<p>We first load in the necessary packages, including the
+<code>SPOT</code> package, which is available on Github.</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://sarahsamorodnitsky.github.io/spagg/">spagg</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">SPOT</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://magrittr.tidyverse.org" class="external-link">magrittr</a></span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://dplyr.tidyverse.org" class="external-link">dplyr</a></span><span class="op">)</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; Attaching package: 'dplyr'</span></span>
+<span><span class="co">#&gt; The following objects are masked from 'package:stats':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     filter, lag</span></span>
+<span><span class="co">#&gt; The following objects are masked from 'package:base':</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt;     intersect, setdiff, setequal, union</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://ggplot2.tidyverse.org" class="external-link">ggplot2</a></span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="loading-in-the-data">Loading in the Data<a class="anchor" aria-label="anchor" href="#loading-in-the-data"></a>
+</h2>
 <p>For this analysis, we will use the non-small cell lung cancer dataset
 used in the <code>Non-Small Cell Lung Cancer Analysis</code> vignette.
 As described there, we will downloaded the data from <a href="http://juliawrobel.com/MI_tutorial/MI_Data.html" class="external-link uri">http://juliawrobel.com/MI_tutorial/MI_Data.html</a> but is
@@ -158,6 +167,10 @@ cell, CD4+ T cell, CD8+ T cell, and CD19+ B cell. We will examine the
 pairwise colocalization of CD4+ T cells and tumor cells as well as CD8+
 T cells and tumor cells and their associations with a sample exhibiting
 an MHCII-high tumor microenvironment (TME).</p>
+</div>
+<div class="section level2">
+<h2 id="weighted-aggregations">Weighted Aggregations<a class="anchor" aria-label="anchor" href="#weighted-aggregations"></a>
+</h2>
 <p>As described in the introductory vignette, <code>spagg</code>
 contains five approaches for aggregating spatial summaries at a given
 radius. Three of these approaches are weighted means and the other three
@@ -177,6 +190,10 @@ statistics are given below:</p>
   \bar K_i^{Landau} = \frac{\sum_{r=1}^{R_i} A_{ir}}{\sum_{r=1}^{R_i} n_{ir}} \sum_{r=1}^{R_i} \frac{n^2_{ir}}{A_{ir}} \hat K_{ir} 
 \end{equation*}</annotation></semantics></math></p></li>
 </ol>
+</div>
+<div class="section level2">
+<h2 id="incorporating-weighted-aggregations-into-spot">Incorporating Weighted Aggregations into SPOT<a class="anchor" aria-label="anchor" href="#incorporating-weighted-aggregations-into-spot"></a>
+</h2>
 <p>The steps to our analysis are as follows:</p>
 <ol style="list-style-type: decimal">
 <li><p>We will determine a range of candidate radii in advance. For this
@@ -342,7 +359,9 @@ all four means show significance. After approximately a radius of
 only the Baddeley mean shows consistent significance. This aligns with
 the omnibus p-value for the Baddeley mean being the lowest among the
 four options shown above.</p>
-  </main>
+</div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside>
 </div>
 
 
