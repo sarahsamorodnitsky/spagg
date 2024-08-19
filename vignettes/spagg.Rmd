@@ -369,17 +369,16 @@ The motivation behind these ensemble approaches is that the best set of weights 
 We now run these approaches to testing for the univariate analysis using the `cell.a.results` data.frame we constructed above which contains the Ripley's K value at `r=30`.
 
 ```{r ensemble for the univariate analysis}
-# Add the outcome back into the data
-cell.a.results <- left_join(cell.a.results, 
-                     simdata %>% dplyr::select(id, PID, out) %>% distinct(), 
-                     by = c("id", "PID"))
-
 # Run each ensemble test
-ensemble.res <- ensemble.avg(data = cell.a.results, group = "PID", 
-                             outcome = "out", model = "logistic")
+ensemble.res <- ensemble.avg(data = cell.a.results, 
+                             group = "PID", 
+                             outcome = "out", 
+                             model = "logistic")
 
-combo.res <- combo.weight.avg(data = cell.a.results, group = "PID", 
-                              outcome = "out", model = "logistic")
+combo.res <- combo.weight.avg(data = cell.a.results, 
+                              group = "PID", 
+                              outcome = "out", 
+                              model = "logistic")
 
 # Add the p-values to the results above
 cell.a.pvals <- rbind.data.frame(
