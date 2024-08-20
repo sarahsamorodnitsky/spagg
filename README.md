@@ -62,4 +62,4 @@ analysis, please see the associated vignettes. The `spagg` package contains thre
 
 ## Bugs and Improvements
 
-Please feel free to use the `Issues` tab to note bugs or to suggest improvements. 
+Please feel free to use the `Issues` tab on [the spagg Github site](https://github.com/sarahsamorodnitsky/spagg) to note bugs or to suggest improvements. 
